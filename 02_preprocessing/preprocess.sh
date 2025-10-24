@@ -2,6 +2,7 @@
 
 # Football Video Preprocessing Script
 # Processes raw videos to 4 FPS as required by Cosmos-Reason1-7B
+# Uses exact ffmpeg command format: ffmpeg -i input.mp4 -r 4 output.mp4
 
 set -e
 
@@ -15,6 +16,13 @@ AUDIO_CODEC="aac"
 
 # Create processed videos directory
 mkdir -p "$PROCESSED_VIDEOS_DIR"
+
+# Function to demonstrate the exact ffmpeg command from Cosmos-Reason1-7B model card
+show_example_command() {
+    echo "📋 Example ffmpeg command (from Cosmos-Reason1-7B model card):"
+    echo "   ffmpeg -i /raw_videos/goal_01.mp4 -r 4 /processed_videos/goal_01.mp4"
+    echo ""
+}
 
 # Function to process a single video
 process_video() {
@@ -30,9 +38,10 @@ process_video() {
     
     echo "  📊 Original: ${duration}s, ${fps} FPS"
     
-    # Process video to 4 FPS
+    # Process video to 4 FPS using the exact format from Cosmos-Reason1-7B model card
     ffmpeg -i "$input_file" \
-        -vf "fps=$TARGET_FPS,scale=$TARGET_RESOLUTION" \
+        -r 4 \
+        -vf "scale=$TARGET_RESOLUTION" \
         -c:v "$VIDEO_CODEC" \
         -c:a "$AUDIO_CODEC" \
         -preset fast \
@@ -182,6 +191,9 @@ main() {
     echo "🎯 Target FPS: $TARGET_FPS"
     echo "📺 Target resolution: $TARGET_RESOLUTION"
     echo ""
+    
+    # Show example command from Cosmos-Reason1-7B model card
+    show_example_command
     
     # Check if raw videos directory exists
     if [ ! -d "$RAW_VIDEOS_DIR" ]; then
