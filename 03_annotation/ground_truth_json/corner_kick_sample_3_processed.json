@@ -1,0 +1,26 @@
+{
+  "video_file": "corner_kick_sample_3_processed.mp4",
+  "class": "corner_kick",
+  "video_info": {
+    "duration": 10.008005,
+    "fps": "4/1",
+    "duration_formatted": "0:10"
+  },
+  "annotations": [
+    {
+      "description": "Player takes a corner kick in the corner_kick video. The ball is placed in the corner and kicked into the penalty area.",
+      "start_time": "0:00:03",
+      "end_time": "0:00:12",
+      "event": "Corner Kick",
+      "confidence": 1.0,
+      "details": {
+        "action": "corner_kick_taken",
+        "location": "corner_arc",
+        "outcome": "corner_delivered"
+      }
+    }
+  ],
+  "created_date": "2025-10-24T22:17:59.721365",
+  "annotator": "manual",
+  "status": "completed"
+}

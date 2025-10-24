@@ -1,0 +1,26 @@
+{
+  "video_file": "penalty_shot_sample_1_processed.mp4",
+  "class": "penalty_shot",
+  "video_info": {
+    "duration": 10.008005,
+    "fps": "4/1",
+    "duration_formatted": "0:10"
+  },
+  "annotations": [
+    {
+      "description": "Player takes a penalty shot in the penalty_shot video. The player approaches the ball and strikes it towards the goal.",
+      "start_time": "0:00:03",
+      "end_time": "0:00:12",
+      "event": "Penalty Shot",
+      "confidence": 1.0,
+      "details": {
+        "action": "penalty_taken",
+        "location": "penalty_spot",
+        "outcome": "penalty_attempt"
+      }
+    }
+  ],
+  "created_date": "2025-10-24T22:18:02.158737",
+  "annotator": "manual",
+  "status": "completed"
+}

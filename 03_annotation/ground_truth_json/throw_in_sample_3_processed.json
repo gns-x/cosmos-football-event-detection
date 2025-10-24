@@ -1,0 +1,26 @@
+{
+  "video_file": "throw_in_sample_3_processed.mp4",
+  "class": "throw_in",
+  "video_info": {
+    "duration": 10.008005,
+    "fps": "4/1",
+    "duration_formatted": "0:10"
+  },
+  "annotations": [
+    {
+      "description": "Player takes a throw-in in the throw_in video. The player throws the ball back into play from the touchline.",
+      "start_time": "0:00:02",
+      "end_time": "0:00:08",
+      "event": "Throw In",
+      "confidence": 1.0,
+      "details": {
+        "action": "throw_in_taken",
+        "location": "touchline",
+        "outcome": "ball_returned_to_play"
+      }
+    }
+  ],
+  "created_date": "2025-10-24T22:18:00.249029",
+  "annotator": "manual",
+  "status": "completed"
+}

@@ -1,0 +1,26 @@
+{
+  "video_file": "offside_sample_2_processed.mp4",
+  "class": "offside",
+  "video_info": {
+    "duration": 10.008005,
+    "fps": "4/1",
+    "duration_formatted": "0:10"
+  },
+  "annotations": [
+    {
+      "description": "Offside decision is made in the offside video. The referee signals offside and the play is stopped.",
+      "start_time": "0:00:03",
+      "end_time": "0:00:10",
+      "event": "Offside",
+      "confidence": 1.0,
+      "details": {
+        "action": "offside_decision",
+        "location": "field",
+        "outcome": "play_stopped"
+      }
+    }
+  ],
+  "created_date": "2025-10-24T22:17:59.549972",
+  "annotator": "manual",
+  "status": "completed"
+}
