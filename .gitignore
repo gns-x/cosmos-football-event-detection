@@ -122,6 +122,7 @@ mlruns/
 07_inference/results/
 outputs/
 results/
+.cursorignore
 
 # Large datasets
 *.zip
@@ -134,3 +135,4 @@ results/
 !01_data_collection/raw_videos/.gitkeep
 !02_preprocessing/processed_videos/.gitkeep
 !06_evaluation/results/.gitkeep
+

@@ -1,13 +1,24 @@
-# Python dependencies for inference
+# Python dependencies for Cosmos Football Video Analysis
+# Core Cosmos dependencies from Cosmos-Reason1-7B.md
 torch>=2.0.0
 transformers>=4.30.0
+vllm>=0.6.0
+qwen_vl_utils>=0.0.1
+
+# Training and fine-tuning
 accelerate>=0.20.0
 peft>=0.4.0
 bitsandbytes>=0.39.0
+
+# Computer vision and video processing
 opencv-python>=4.8.0
 pillow>=9.5.0
 numpy>=1.24.0
-python-dotenv>=1.0.0
+
+# Evaluation and metrics
 rouge-score>=0.1.2
 scikit-learn>=1.3.0
+
+# Utilities
+python-dotenv>=1.0.0
 tqdm>=4.65.0

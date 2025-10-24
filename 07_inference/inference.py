@@ -11,6 +11,11 @@ from typing import Dict, Any, List
 import argparse
 from dotenv import load_dotenv
 
+# Cosmos-specific imports
+from transformers import AutoProcessor
+from vllm import LLM, SamplingParams
+from qwen_vl_utils import process_vision_info
+
 def load_environment():
     """Load environment variables from .env file."""
     load_dotenv()
@@ -27,36 +32,93 @@ def load_environment():
     return config
 
 def load_model(model_path: str, device: str):
-    """Load the fine-tuned model."""
-    print(f"Loading model from {model_path}...")
+    """Load the Cosmos model using vLLM."""
+    print(f"Loading Cosmos model from {model_path}...")
     
-    # TODO: Implement actual model loading
-    # This would involve:
-    # 1. Loading the base model
-    # 2. Loading LoRA adapters
-    # 3. Setting up the model for inference
+    # Load the Cosmos model with vLLM
+    llm = LLM(
+        model=model_path,
+        limit_mm_per_prompt={"image": 10, "video": 10},
+        dtype="bfloat16",  # BF16 as per Cosmos-Reason1-7B specs
+        gpu_memory_utilization=0.8,
+    )
     
-    model = None  # Placeholder
-    print("Model loaded successfully!")
-    return model
+    # Load the processor for chat template
+    processor = AutoProcessor.from_pretrained(model_path)
+    
+    print("Cosmos model loaded successfully!")
+    return llm, processor
 
-def process_video(video_path: str, model, config: Dict[str, Any]) -> Dict[str, Any]:
-    """Process a single video and generate description."""
+def process_video(video_path: str, model_data, config: Dict[str, Any]) -> Dict[str, Any]:
+    """Process a single video using Cosmos model."""
     
     print(f"Processing video: {video_path}")
     
-    # TODO: Implement actual video processing
-    # This would involve:
-    # 1. Loading and preprocessing the video
-    # 2. Running the model
-    # 3. Generating the description
+    llm, processor = model_data
     
-    # Placeholder result
+    # Create video messages with Cosmos format
+    video_messages = [
+        {
+            "role": "system", 
+            "content": "You are a helpful assistant. Answer the question in the following format: \n\n."
+        },
+        {
+            "role": "user", 
+            "content": [
+                {"type": "text", "text": "Describe the football action in this video."},
+                {
+                    "type": "video", 
+                    "video": f"file://{os.path.abspath(video_path)}",
+                    "fps": 4,  # Use fps=4 as per Cosmos-Reason1-7B specs
+                }
+            ]
+        },
+    ]
+    
+    # Process the prompt
+    prompt = processor.apply_chat_template(
+        video_messages,
+        tokenize=False,
+        add_generation_prompt=True,
+    )
+    
+    # Process vision information
+    image_inputs, video_inputs, video_kwargs = process_vision_info(
+        video_messages, 
+        return_video_kwargs=True
+    )
+    
+    # Prepare multimodal data
+    mm_data = {}
+    if image_inputs is not None:
+        mm_data["image"] = image_inputs
+    if video_inputs is not None:
+        mm_data["video"] = video_inputs
+    
+    # Set up sampling parameters
+    sampling_params = SamplingParams(
+        temperature=config.get("temperature", 0.6),
+        top_p=config.get("top_p", 0.95),
+        repetition_penalty=1.05,
+        max_tokens=4096,  # Use 4096+ tokens as per Cosmos specs
+    )
+    
+    # Prepare inputs for vLLM
+    llm_inputs = {
+        "prompt": prompt,
+        "multi_modal_data": mm_data,
+        "mm_processor_kwargs": video_kwargs,
+    }
+    
+    # Generate response
+    outputs = llm.generate([llm_inputs], sampling_params=sampling_params)
+    generated_text = outputs[0].outputs[0].text
+    
     result = {
         "video_path": video_path,
-        "description": "Placeholder description of the football action",
-        "confidence": 0.85,
-        "processing_time": 2.5
+        "description": generated_text,
+        "confidence": 0.85,  # Placeholder confidence
+        "processing_time": 2.5  # Placeholder time
     }
     
     return result

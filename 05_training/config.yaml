@@ -1,9 +1,11 @@
 # Configuration file for Cosmos fine-tuning
-# Hyperparameters and training settings
+# Hyperparameters and training settings based on Cosmos-Reason1-7B.md
 
 # Model configuration
-model_name: "cosmos-reason-1-7b"
-base_model_path: "nvidia/cosmos-reason-1-7b"
+model_name: "Cosmos-Reason1-7B"
+base_model_path: "nvidia/Cosmos-Reason1-7B"
+model_type: "multimodal_llm"
+architecture: "Qwen2.5-VL-7B-Instruct"
 
 # LoRA configuration
 lora_rank: 16
@@ -23,6 +25,12 @@ warmup_steps: 100
 train_data_path: "../04_dataset/train.jsonl"
 validation_data_path: "../04_dataset/validation.jsonl"
 max_length: 2048
+
+# Cosmos-specific video settings
+video_fps: 4
+max_video_frames: 10
+max_image_frames: 10
+input_context_length: 128000  # 128K as per Cosmos-Reason1-7B specs
 
 # Output configuration
 output_dir: "./checkpoints"
