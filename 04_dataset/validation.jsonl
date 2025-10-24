@@ -1,3 +1,0 @@
-# Validation dataset file
-# This file will be populated by build_dataset.py
-# Each line contains a JSON object with video path and annotations

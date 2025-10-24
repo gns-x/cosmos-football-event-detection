@@ -1,0 +1,13 @@
+{
+  "video": "yellow_card_sample_3_processed",
+  "annotations": [
+    {
+      "class": "yellow_card",
+      "confidence": 1.0,
+      "timestamp": "2025-01-01T00:00:00Z",
+      "annotator": "sample_generator"
+    }
+  ],
+  "timestamp": "2025-01-01T00:00:00Z",
+  "annotator": "sample_generator"
+}

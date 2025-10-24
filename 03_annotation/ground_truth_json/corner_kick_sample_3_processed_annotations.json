@@ -1,0 +1,13 @@
+{
+  "video": "corner_kick_sample_3_processed",
+  "annotations": [
+    {
+      "class": "corner_kick",
+      "confidence": 1.0,
+      "timestamp": "2025-01-01T00:00:00Z",
+      "annotator": "sample_generator"
+    }
+  ],
+  "timestamp": "2025-01-01T00:00:00Z",
+  "annotator": "sample_generator"
+}

@@ -1,0 +1,27 @@
+{
+  "dataset_name": "Cosmos Football Video Analysis",
+  "version": "1.0.0",
+  "created_date": "2025-10-24T22:15:36.662275",
+  "splits": {
+    "train": 16,
+    "validation": 0,
+    "test": 8
+  },
+  "classes": [
+    "red_card",
+    "free_kick",
+    "penalty_shot",
+    "corner_kick",
+    "offside",
+    "yellow_card",
+    "throw_in",
+    "goal"
+  ],
+  "total_samples": 24,
+  "cosmos_format": true,
+  "video_specs": {
+    "fps": 4,
+    "max_duration": 30,
+    "resolution": "720x480"
+  }
+}
