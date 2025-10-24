@@ -60,6 +60,11 @@ ENV/
 env.bak/
 venv.bak/
 
+# Conda environments
+.conda/
+conda-meta/
+.conda-env/
+
 # IDEs
 .vscode/
 .idea/
@@ -135,4 +140,16 @@ results/
 !01_data_collection/raw_videos/.gitkeep
 !02_preprocessing/processed_videos/.gitkeep
 !06_evaluation/results/.gitkeep
+
+# Conda specific files (keep environment.yml and activate_env.sh)
+conda-meta/
+.conda/
+.conda-env/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Conda environment cache
+.conda/pkgs/
+.conda/envs/
 
