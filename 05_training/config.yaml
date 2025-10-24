@@ -44,6 +44,19 @@ torch_dtype: "bfloat16"
 fp16: false
 bf16: true
 
+# Cosmos RL SFT Framework settings
+use_deepspeed: true
+deepspeed_config: "configs/deepspeed_config.json"
+use_ray: true
+ray_config:
+  num_workers: 4
+  resources_per_worker: {"CPU": 2, "GPU": 1}
+
+# Monitoring and logging
+use_wandb: true
+wandb_project: "cosmos-football"
+tensorboard_log_dir: "./logs"
+
 # Other settings
 seed: 42
 dataloader_num_workers: 4
