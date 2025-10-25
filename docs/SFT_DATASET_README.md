@@ -2,19 +2,12 @@
 # 🏆 Cosmos Football Video SFT Dataset Summary
 
 ## 📊 Dataset Statistics
-- **Total Examples**: 48
-- **Training**: 35 examples (72.9%)
-- **Validation**: 13 examples (27.1%)
+- **Total Examples**: 1
+- **Training**: 0 examples (0.0%)
+- **Validation**: 1 examples (100.0%)
 
-## 🏷️ Classes (8)
-- corner_kick
-- free_kick
-- goal
-- offside
-- penalty_shot
-- red_card
-- throw_in
-- yellow_card
+## 🏷️ Classes (1)
+- processed_videos
 
 ## 📁 Files
 - `train.jsonl` - Training data in SFT format

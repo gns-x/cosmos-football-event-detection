@@ -48,6 +48,7 @@ setup:
 	@echo ""
 	@echo "📁 Setting up project structure..."
 	@mkdir -p data/{raw_videos,processed_videos,annotations,datasets,checkpoints,results}
+	@mkdir -p docs scripts tests
 	@echo "✅ Project structure created"
 	@echo ""
 	@echo "🎯 Azure A100 VM setup completed!"
@@ -91,7 +92,7 @@ test:
 	@echo "🔧 Activating environment..."
 	@source cosmos-env/bin/activate && \
 	echo "📋 Running end-to-end pipeline test..." && \
-	python run_end_to_end_test.py && \
+	python scripts/run_end_to_end_test.py && \
 	echo "✅ Critical pipeline tests completed!"
 	@echo ""
 	@echo "📊 Test Results Summary:"

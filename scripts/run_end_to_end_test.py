@@ -17,7 +17,7 @@ class EndToEndTester:
     """Critical end-to-end pipeline tester."""
     
     def __init__(self, project_root: str):
-        self.project_root = Path(project_root)
+        self.project_root = Path(project_root).parent  # Go up one level from scripts/
         self.test_video_name = "goal_test_01"
         self.results = {}
         
