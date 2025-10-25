@@ -130,6 +130,27 @@ download_from_playlists() {
     done
 }
 
+# Function to run enhanced Python downloader
+run_enhanced_downloader() {
+    echo "🚀 Running Enhanced Video Downloader"
+    echo "📁 Download directory: $DOWNLOAD_DIR"
+    echo "🎯 Max videos per channel: 10"
+    echo "🎯 Max videos per class: 5"
+    echo "⏱️  M3U8 duration: 30 seconds"
+    echo ""
+    
+    # Run the enhanced Python downloader
+    python3 ../scripts/enhanced_video_downloader.py \
+        --download_dir "$DOWNLOAD_DIR" \
+        --max_videos_per_channel 10 \
+        --max_videos_per_class 5 \
+        --m3u8_duration 30 \
+        --output_json "$DOWNLOAD_DIR/download_results.json"
+    
+    echo ""
+    echo "✅ Enhanced download completed!"
+}
+
 # Main execution
 main() {
     echo "🚀 Starting Football Video Data Collection"
@@ -139,23 +160,31 @@ main() {
     echo "📺 Video quality: $VIDEO_QUALITY"
     echo ""
     
-    # Download videos for each class
-    for class in "${!CLASS_SEARCHES[@]}"; do
-        download_class_videos "$class" "${CLASS_SEARCHES[$class]}"
+    # Check if enhanced downloader is available
+    if [ -f "../scripts/enhanced_video_downloader.py" ]; then
+        echo "🔧 Using Enhanced Video Downloader (Python)"
+        run_enhanced_downloader
+    else
+        echo "🔧 Using Basic Download Script (Bash)"
+        
+        # Download videos for each class
+        for class in "${!CLASS_SEARCHES[@]}"; do
+            download_class_videos "$class" "${CLASS_SEARCHES[$class]}"
+            echo ""
+        done
+        
+        # Download from M3U8 streams
+        download_m3u8_streams
         echo ""
-    done
-    
-    # Download from M3U8 streams
-    download_m3u8_streams
-    echo ""
-    
-    # Download from channels
-    download_from_channels
-    echo ""
-    
-    # Download from playlists
-    download_from_playlists
-    echo ""
+        
+        # Download from channels
+        download_from_channels
+        echo ""
+        
+        # Download from playlists
+        download_from_playlists
+        echo ""
+    fi
     
     # Summary
     echo "📊 Download Summary:"
@@ -163,6 +192,17 @@ main() {
         local count=$(find "$DOWNLOAD_DIR/$class" -name "*.mp4" -o -name "*.webm" -o -name "*.mkv" | wc -l)
         echo "  $class: $count videos"
     done
+    
+    # Check for other directories
+    if [ -d "$DOWNLOAD_DIR/channels" ]; then
+        local channel_count=$(find "$DOWNLOAD_DIR/channels" -name "*.mp4" -o -name "*.webm" -o -name "*.mkv" | wc -l)
+        echo "  channels: $channel_count videos"
+    fi
+    
+    if [ -d "$DOWNLOAD_DIR/m3u8_streams" ]; then
+        local m3u8_count=$(find "$DOWNLOAD_DIR/m3u8_streams" -name "*.mp4" -o -name "*.webm" -o -name "*.mkv" | wc -l)
+        echo "  m3u8_streams: $m3u8_count videos"
+    fi
     
     local total=$(find "$DOWNLOAD_DIR" -name "*.mp4" -o -name "*.webm" -o -name "*.mkv" | wc -l)
     echo "  Total: $total videos"
