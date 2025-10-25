@@ -1,0 +1,108 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Football Video Analysis SFT Configuration
+# Based on Cosmos-Reason1-7B model with LoRA fine-tuning
+
+redis = "12800"
+
+[train]
+resume = true                          # Enable resuming from checkpoints
+epoch = 10                             # Train for 10 epochs (reduced for sample data)
+output_dir = "./checkpoints/football_sft"  # Output directory for LoRA adapters
+epsilon = 1e-6
+optm_name = "AdamW"
+optm_lr = 1e-4                         # Learning rate for LoRA fine-tuning
+optm_impl = "fused"
+optm_weight_decay = 0.01
+optm_betas = [0.9, 0.999]
+optm_warmup_steps = 10                 # Warmup steps
+optm_grad_norm_clip = 1.0
+async_tp_enabled = false
+compile = false
+param_dtype = "bfloat16"               # Use BF16 for efficiency
+fsdp_reduce_dtype = "float32"
+fsdp_offload = false
+fsdp_reshard_after_forward = "default"
+train_batch_per_replica = 1           # Small batch size for memory efficiency
+sync_weight_interval = 1
+enable_validation = true
+validation_step = 10                   # Validate every 10 steps
+validation_batch_per_replica = 1
+
+[policy]
+model_name_or_path = "nvidia/Cosmos-Reason1-7B"
+model_max_length = 4096               # Reduced for efficiency
+model_gradient_checkpointing = true   # Enable gradient checkpointing for memory efficiency
+
+[logging]
+logger = ['console', 'wandb']
+project_name = "cosmos_football_analysis"
+experiment_name = "football_sft_lora"
+
+[train.train_policy]
+type = "sft"
+enable_dataset_cache = false
+dataloader_num_workers = 2             # Reduced for stability
+dataloader_prefetch_factor = 2
+conversation_column_name = "conversations"
+mini_batch = 1                         # Small mini-batch for memory efficiency
+
+[train.train_policy.dataset]
+name = "/Users/Genesis/Desktop/upwork/Nvidia-AI/project-cosmos-football/04_dataset/train"
+
+[train.ckpt]
+enable_checkpoint = true
+save_freq = 10                         # Save checkpoint every 10 steps
+max_keep = 3                           # Keep last 3 checkpoints
+save_mode = "async"
+
+[policy.parallelism]
+n_init_replicas = 1
+tp_size = 1                           # Tensor parallelism
+cp_size = 1                           # Context parallelism
+dp_shard_size = 8                     # Data parallelism shard size
+pp_size = 1                          # Pipeline parallelism
+dp_replicate_size = 1
+cp_rotate_method = "allgather"
+
+# LoRA Configuration for Parameter-Efficient Fine-Tuning
+[policy.lora]
+use_lora = true                       # Enable LoRA fine-tuning
+lora_rank = 16                        # LoRA rank
+lora_alpha = 32                       # LoRA alpha
+lora_dropout = 0.1                    # LoRA dropout
+lora_target_modules = [               # Target modules for LoRA
+    "q_proj",
+    "k_proj", 
+    "v_proj",
+    "o_proj",
+    "gate_proj",
+    "up_proj",
+    "down_proj"
+]
+
+# Vision Configuration for Football Videos
+[custom.vision]
+fps = 4                               # 4 FPS as required by Cosmos-Reason1-7B
+max_pixels = 81920                    # Maximum pixels for video processing
+max_video_frames = 10                 # Maximum video frames
+max_image_frames = 10                 # Maximum image frames
+
+# Dataset Configuration
+[custom.dataset]
+annotation_path = "/Users/Genesis/Desktop/upwork/Nvidia-AI/project-cosmos-football/04_dataset/train.jsonl"
+media_path = "/Users/Genesis/Desktop/upwork/Nvidia-AI/project-cosmos-football/02_preprocessing/processed_videos"
+system_prompt = "You are a helpful assistant that can analyze football videos and identify significant events including goals, cards, and shots. For each event, provide a detailed description including player, team, and jersey info, the event class, and precise start/end timestamps."

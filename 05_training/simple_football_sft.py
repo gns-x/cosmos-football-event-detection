@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Football Video Analysis Fine-tuning Script
-Adapted from Cosmos Cookbook for football video analysis
+Simplified Football Video Analysis SFT Training Script
+Uses Cosmos RL framework without cosmos_reason1_utils dependency
 """
 
 import os
@@ -11,26 +11,19 @@ import argparse
 from pathlib import Path
 from typing import Dict, List, Any
 
-# Add cosmos-cookbook to path
-cookbook_path = Path(__file__).parent / "cosmos-cookbook"
-sys.path.insert(0, str(cookbook_path))
-
 try:
     import cosmos_rl.launcher.worker_entry
     import cosmos_rl.policy.config
-    from cosmos_reason1_utils.text import create_conversation
-    from cosmos_reason1_utils.vision import VisionConfig
     from cosmos_rl.utils.logging import logger
     print("✅ Cosmos RL framework imported successfully")
 except ImportError as e:
     print(f"❌ Import error: {e}")
     print("💡 Please ensure Cosmos RL framework is installed")
-    print("💡 Try: pip install git+https://github.com/nvidia-cosmos/cosmos-rl.git --no-deps")
     sys.exit(1)
 
 
-class FootballSFTConfig:
-    """Football Video Analysis SFT Configuration."""
+class SimpleFootballSFTConfig:
+    """Simplified Football Video Analysis SFT Configuration."""
     
     def __init__(self, config_path: str):
         self.config_path = config_path
@@ -60,7 +53,7 @@ class FootballSFTConfig:
         return self.config.get("custom", {}).get("dataset", {})
 
 
-def create_football_dataset(config: FootballSFTConfig):
+def create_football_dataset(config: SimpleFootballSFTConfig):
     """Create football video dataset for training."""
     print("📊 Creating Football Video Dataset")
     
@@ -79,9 +72,18 @@ def create_football_dataset(config: FootballSFTConfig):
     print(f"✅ Training file: {train_file}")
     print(f"✅ Validation file: {val_file}")
     
+    # Count examples
+    train_count = sum(1 for _ in open(train_file))
+    val_count = sum(1 for _ in open(val_file))
+    
+    print(f"📊 Training examples: {train_count}")
+    print(f"📊 Validation examples: {val_count}")
+    
     return {
         "train_file": str(train_file),
-        "val_file": str(val_file)
+        "val_file": str(val_file),
+        "train_count": train_count,
+        "val_count": val_count
     }
 
 
@@ -102,14 +104,14 @@ def setup_training_environment():
 
 
 def run_training(config_path: str, resume: bool = False):
-    """Run the SFT training."""
-    print("🚀 Starting Football SFT Training")
+    """Run the SFT training using cosmos_rl."""
+    print("🚀 Starting Football SFT Training with Cosmos RL")
     
     # Setup environment
     setup_training_environment()
     
     # Load configuration
-    config = FootballSFTConfig(config_path)
+    config = SimpleFootballSFTConfig(config_path)
     
     # Create dataset
     dataset = create_football_dataset(config)
@@ -131,7 +133,7 @@ def run_training(config_path: str, resume: bool = False):
         # Change to training directory
         os.chdir(Path(__file__).parent)
         
-        # Run training
+        # Run training using cosmos_rl
         import subprocess
         result = subprocess.run(cmd, check=True)
         
@@ -148,7 +150,7 @@ def run_training(config_path: str, resume: bool = False):
 
 def main():
     """Main training function."""
-    parser = argparse.ArgumentParser(description="Football Video Analysis Fine-tuning")
+    parser = argparse.ArgumentParser(description="Simplified Football Video Analysis Fine-tuning")
     parser.add_argument("--config", type=str, 
                        default="football_sft_config.toml",
                        help="Path to TOML configuration file")
@@ -159,8 +161,8 @@ def main():
     
     args = parser.parse_args()
     
-    print("🏈 Football Video Analysis Fine-tuning")
-    print("=" * 50)
+    print("🏈 Simplified Football Video Analysis Fine-tuning")
+    print("=" * 60)
     
     # Check if config file exists
     config_path = Path(args.config)
@@ -173,10 +175,11 @@ def main():
     
     if args.check_setup:
         print("🔍 Checking setup...")
-        config = FootballSFTConfig(args.config)
+        config = SimpleFootballSFTConfig(args.config)
         dataset = create_football_dataset(config)
         if dataset:
             print("✅ Setup check passed!")
+            print(f"📊 Dataset ready: {dataset['train_count']} train, {dataset['val_count']} val")
             return 0
         else:
             print("❌ Setup check failed!")
