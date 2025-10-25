@@ -52,6 +52,38 @@ download_class_videos() {
     echo "✅ Downloaded videos for $class_name"
 }
 
+# Function to download from M3U8 streams
+download_m3u8_streams() {
+    echo "📡 Downloading from M3U8 streams..."
+    
+    # M3U8 stream sources for football videos
+    local m3u8_streams=(
+        "https://h2ddsukdqkoh6b.data.mediastore.us-east-1.amazonaws.com/ucl-walionpapl-aug13-eb643a9-archive/master/ucl-walionpapl-aug13-eb643a9-archive.m3u8"
+        # Add more M3U8 streams here
+    )
+    
+    for stream_url in "${m3u8_streams[@]}"; do
+        echo "📺 Downloading from M3U8 stream: $stream_url"
+        
+        # Create M3U8 directory
+        mkdir -p "$DOWNLOAD_DIR/m3u8_streams"
+        
+        # Download using ffmpeg
+        local output_file="$DOWNLOAD_DIR/m3u8_streams/stream_$(date +%s).mp4"
+        
+        ffmpeg -i "$stream_url" \
+            -t 30 \
+            -c copy \
+            -bsf:a aac_adtstoasc \
+            -y \
+            "$output_file" || echo "⚠️  M3U8 download failed for: $stream_url"
+        
+        if [ -f "$output_file" ]; then
+            echo "✅ M3U8 stream downloaded: $output_file"
+        fi
+    done
+}
+
 # Function to download from specific channels (more reliable)
 download_from_channels() {
     echo "📺 Downloading from specific football channels..."
@@ -112,6 +144,10 @@ main() {
         download_class_videos "$class" "${CLASS_SEARCHES[$class]}"
         echo ""
     done
+    
+    # Download from M3U8 streams
+    download_m3u8_streams
+    echo ""
     
     # Download from channels
     download_from_channels

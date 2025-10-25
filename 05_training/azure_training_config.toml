@@ -103,3 +103,4 @@ use_dataloader_persistent_workers = true
 seed = 42
 disable_tqdm = false
 report_to = ["wandb", "tensorboard"]
+
