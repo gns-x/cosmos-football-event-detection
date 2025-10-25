@@ -1,7 +1,7 @@
 {
   "dataset_name": "Cosmos Football Video SFT Dataset",
   "version": "1.0.0",
-  "created_date": "2025-10-25T11:38:17.618593",
+  "created_date": "2025-10-25T11:41:08.933652",
   "format": "SFT (Supervised Fine-Tuning)",
   "splits": {
     "train": 0,

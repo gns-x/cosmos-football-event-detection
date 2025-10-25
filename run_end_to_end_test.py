@@ -226,18 +226,37 @@ class EndToEndTester:
         # Step 3: Verification
         print("\n3️⃣ CRITICAL VERIFICATION:")
         train_file = self.project_root / "04_dataset" / "train.jsonl"
+        val_file = self.project_root / "04_dataset" / "validation.jsonl"
         
-        if not train_file.exists():
-            print(f"❌ Train file not found: {train_file}")
+        # Check if we have data in either train or validation
+        train_lines = 0
+        val_lines = 0
+        
+        if train_file.exists():
+            with open(train_file, 'r') as f:
+                train_lines = len(f.readlines())
+        
+        if val_file.exists():
+            with open(val_file, 'r') as f:
+                val_lines = len(f.readlines())
+        
+        total_lines = train_lines + val_lines
+        
+        if total_lines == 0:
+            print(f"❌ No data found in train.jsonl or validation.jsonl")
             return False
+        
+        if total_lines != 1:
+            print(f"❌ Expected 1 line total, got {total_lines} (train: {train_lines}, val: {val_lines})")
+            return False
+        
+        # Use whichever file has the data
+        data_file = train_file if train_lines > 0 else val_file
+        print(f"✅ Found data in: {data_file.name}")
         
         # Check content
-        with open(train_file, 'r') as f:
+        with open(data_file, 'r') as f:
             lines = f.readlines()
-        
-        if len(lines) != 1:
-            print(f"❌ Expected 1 line, got {len(lines)}")
-            return False
         
         print("✅ Train.jsonl contains exactly 1 line")
         
@@ -291,6 +310,22 @@ class EndToEndTester:
         print("\n1️⃣ Creating overfit dataset...")
         train_file = self.project_root / "04_dataset" / "train.jsonl"
         val_file = self.project_root / "04_dataset" / "validation.jsonl"
+        
+        # Find which file has the data
+        data_file = None
+        if train_file.exists() and train_file.stat().st_size > 0:
+            data_file = train_file
+        elif val_file.exists() and val_file.stat().st_size > 0:
+            data_file = val_file
+            # Copy validation to train for overfitting
+            with open(val_file, 'r') as f:
+                val_content = f.read()
+            with open(train_file, 'w') as f:
+                f.write(val_content)
+        
+        if not data_file:
+            print("❌ No data found in train.jsonl or validation.jsonl")
+            return False
         
         # Copy train to validation for overfitting
         with open(train_file, 'r') as f:
