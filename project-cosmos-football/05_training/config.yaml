@@ -1,0 +1,63 @@
+# Configuration file for Cosmos fine-tuning
+# Hyperparameters and training settings based on Cosmos-Reason1-7B.md
+
+# Model configuration
+model_name: "Cosmos-Reason1-7B"
+base_model_path: "nvidia/Cosmos-Reason1-7B"
+model_type: "multimodal_llm"
+architecture: "Qwen2.5-VL-7B-Instruct"
+
+# LoRA configuration
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.1
+target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
+
+# Training configuration
+learning_rate: 1e-4
+batch_size: 1
+gradient_accumulation_steps: 4
+epochs: 3
+max_steps: 1000
+warmup_steps: 100
+
+# Data configuration
+train_data_path: "../04_dataset/train.jsonl"
+validation_data_path: "../04_dataset/validation.jsonl"
+max_length: 2048
+
+# Cosmos-specific video settings
+video_fps: 4
+max_video_frames: 10
+max_image_frames: 10
+input_context_length: 128000  # 128K as per Cosmos-Reason1-7B specs
+
+# Output configuration
+output_dir: "./checkpoints"
+save_steps: 500
+eval_steps: 250
+logging_steps: 50
+
+# Hardware configuration
+device_map: "auto"
+torch_dtype: "bfloat16"
+fp16: false
+bf16: true
+
+# Cosmos RL SFT Framework settings
+use_deepspeed: true
+deepspeed_config: "configs/deepspeed_config.json"
+use_ray: true
+ray_config:
+  num_workers: 4
+  resources_per_worker: {"CPU": 2, "GPU": 1}
+
+# Monitoring and logging
+use_wandb: true
+wandb_project: "cosmos-football"
+tensorboard_log_dir: "./logs"
+
+# Other settings
+seed: 42
+dataloader_num_workers: 4
+remove_unused_columns: false

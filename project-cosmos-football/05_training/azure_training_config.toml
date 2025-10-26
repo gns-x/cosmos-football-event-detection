@@ -1,0 +1,106 @@
+# Azure A100 VM Training Configuration for Cosmos Football Analysis
+# Optimized for Standard_NC24ads_A100_v4 instances
+
+[model]
+name = "Cosmos-Reason1-7B"
+base_model_path = "nvidia/Cosmos-Reason1-7B"
+model_type = "multimodal_llm"
+architecture = "Qwen2.5-VL-7B-Instruct"
+
+# LoRA configuration optimized for A100
+[lora]
+use_lora = true
+lora_rank = 16
+lora_alpha = 32
+lora_dropout = 0.1
+target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+# Training parameters optimized for A100
+[training]
+learning_rate = 2e-5
+per_device_train_batch_size = 4
+gradient_accumulation_steps = 4
+num_train_epochs = 3
+max_steps = 1000
+warmup_steps = 100
+weight_decay = 0.01
+adam_beta1 = 0.9
+adam_beta2 = 0.999
+adam_epsilon = 1e-8
+
+# Data configuration
+[data]
+train_data_path = "../04_dataset/train.jsonl"
+validation_data_path = "../04_dataset/validation.jsonl"
+max_length = 2048
+pad_to_max_length = true
+
+# Cosmos-specific video settings
+[video]
+video_fps = 4
+max_video_frames = 10
+max_image_frames = 10
+input_context_length = 128000
+
+# Output configuration
+[output]
+output_dir = "./checkpoints"
+save_steps = 500
+eval_steps = 250
+logging_steps = 50
+save_total_limit = 3
+load_best_model_at_end = true
+metric_for_best_model = "eval_loss"
+greater_is_better = false
+
+# Hardware configuration optimized for A100
+[hardware]
+device_map = "auto"
+torch_dtype = "bfloat16"
+fp16 = false
+bf16 = true
+dataloader_num_workers = 4
+remove_unused_columns = false
+
+# DeepSpeed configuration for A100
+[deepspeed]
+use_deepspeed = true
+deepspeed_config = "configs/azure_deepspeed_config.json"
+
+# Ray configuration for distributed training
+[ray]
+use_ray = true
+ray_config = { num_workers = 4, resources_per_worker = { "CPU" = 2, "GPU" = 1 } }
+
+# Monitoring and logging
+[logging]
+use_wandb = true
+wandb_project = "cosmos-football-azure"
+wandb_entity = "cosmos-football"
+tensorboard_log_dir = "./logs"
+log_level = "INFO"
+
+# Azure-specific settings
+[azure]
+vm_type = "Standard_NC24ads_A100_v4"
+gpu_count = 1
+gpu_memory = 80
+system_memory = 220
+enable_telemetry = true
+checkpoint_frequency = 500
+backup_frequency = 1000
+
+# Performance optimizations
+[performance]
+use_gradient_checkpointing = true
+use_mixed_precision = true
+use_gradient_accumulation = true
+use_dataloader_pin_memory = true
+use_dataloader_persistent_workers = true
+
+# Other settings
+[other]
+seed = 42
+disable_tqdm = false
+report_to = ["wandb", "tensorboard"]
+

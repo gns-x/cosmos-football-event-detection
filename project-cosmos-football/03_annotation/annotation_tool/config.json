@@ -1,0 +1,70 @@
+{
+  "project_name": "Cosmos Football Video Analysis",
+  "version": "1.0.0",
+  "classes": [
+    {
+      "id": "penalty_shot",
+      "name": "Penalty Shot",
+      "description": "Player taking a penalty kick",
+      "color": "#FF6B6B"
+    },
+    {
+      "id": "goal",
+      "name": "Goal",
+      "description": "Ball crossing the goal line",
+      "color": "#4ECDC4"
+    },
+    {
+      "id": "red_card",
+      "name": "Red Card",
+      "description": "Referee showing red card",
+      "color": "#FF0000"
+    },
+    {
+      "id": "yellow_card",
+      "name": "Yellow Card",
+      "description": "Referee showing yellow card",
+      "color": "#FFFF00"
+    },
+    {
+      "id": "corner_kick",
+      "name": "Corner Kick",
+      "description": "Corner kick being taken",
+      "color": "#45B7D1"
+    },
+    {
+      "id": "free_kick",
+      "name": "Free Kick",
+      "description": "Free kick being taken",
+      "color": "#96CEB4"
+    },
+    {
+      "id": "throw_in",
+      "name": "Throw In",
+      "description": "Player taking throw-in",
+      "color": "#FFEAA7"
+    },
+    {
+      "id": "offside",
+      "name": "Offside",
+      "description": "Offside decision or situation",
+      "color": "#DDA0DD"
+    }
+  ],
+  "annotation_settings": {
+    "video_fps": 4,
+    "max_video_duration": 30,
+    "min_annotation_duration": 2,
+    "max_annotation_duration": 10
+  },
+  "export_formats": [
+    "json",
+    "csv",
+    "yolo"
+  ],
+  "quality_control": {
+    "min_annotations_per_video": 1,
+    "max_annotations_per_video": 5,
+    "require_confidence_score": true
+  }
+}
