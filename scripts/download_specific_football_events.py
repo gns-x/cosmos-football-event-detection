@@ -24,21 +24,21 @@ class SpecificFootballEventDownloader:
         self.event_classes = {
             "penalty_shot": {
                 "search_terms": [
-                    "penalty kick",
-                    "penalty shootout",
-                    "penalty save",
-                    "penalty goal",
-                    "penalty miss"
+                    "football penalty kick compilation",
+                    "penalty shootout moments",
+                    "penalty kick goals saves",
+                    "penalty kick highlights",
+                    "penalty kick misses saves"
                 ],
                 "duration_range": "90-180"  # 90 seconds to 3 minutes
             },
             "goal": {
                 "search_terms": [
-                    "football goal",
-                    "amazing goals",
-                    "premier league goals",
+                    "football goal compilation",
+                    "amazing goals compilation",
+                    "best goals of the season",
                     "football goal highlights",
-                    "best football goals"
+                    "soccer goal moments"
                 ],
                 "duration_range": "90-180"
             },
@@ -122,67 +122,26 @@ class SpecificFootballEventDownloader:
             print(f"  🔍 Search {i+1}/{len(search_terms)}: {search_term}")
             
             try:
-                # Download videos using yt-dlp
+                # Download videos using yt-dlp with flexible duration filter
                 cmd = [
                     "yt-dlp",
-                    "-f", "best",  # Use best quality available
-                    "--format-sort", "res:720",  # Prefer 720p
-                    "--no-playlist",
-                    "--match-filter", "duration > 30 & duration < 300",
-                    "-o", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
+                    "--max-downloads", str(max_videos - len(downloaded_videos)),
+                    "--format", "best[height<=720]",
+                    "--match-filter", f"duration > 30 & duration < 300",  # 30 seconds to 5 minutes (more flexible)
+                    "--output", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
                     "--write-info-json",
-                    "--extractor-args", "youtube:player_client=android,webm",  # Use Android webm client
-                    "--user-agent", "com.google.android.youtube/19.09.37 (Linux; U; Android 11; GB) gzip",
-                    "--extractor-retries", "3",
-                    "--fragment-retries", "10",
-                    f"ytsearch{max_videos - len(downloaded_videos)}:{search_term}"
+                    "--write-thumbnail",
+                    "--ignore-errors",  # Continue on individual video errors
+                    f"ytsearch10:{search_term}"
                 ]
                 
-                print(f"    ⬇️  Downloading...")
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+                result = subprocess.run(cmd, capture_output=True, text=True)
                 
-                # Debug output - show actual error
-                if result.returncode != 0:
-                    print(f"    ❌ yt-dlp failed (exit code {result.returncode})")
-                    print(f"    📋 STDOUT: {result.stdout[:200]}")
-                    print(f"    📋 STDERR: {result.stderr[:200]}")
-                else:
-                    print(f"    ✅ yt-dlp succeeded")
-                
-                # Find downloaded videos - check all video files
-                count_before = len(downloaded_videos)
-                # Check for any video files, not just .mp4
-                for video_file in event_dir.glob("*.*"):
-                    if video_file.is_file() and video_file not in downloaded_videos and video_file.suffix in ['.mp4', '.webm', '.mkv']:
+                # Find downloaded videos (even if some failed)
+                for video_file in event_dir.glob(f"{event_name}_*.mp4"):
+                    if video_file.is_file() and video_file not in downloaded_videos:
                         downloaded_videos.append(video_file)
                         print(f"    ✅ Downloaded: {video_file.name}")
-                
-                # Also check directory contents for debugging
-                if len(downloaded_videos) == count_before:
-                    existing_files = list(event_dir.glob("*"))
-                    if existing_files:
-                        print(f"    📁 Found files in directory: {[f.name for f in existing_files]}")
-                
-                if len(downloaded_videos) == count_before:
-                    print(f"    ⚠️  No new videos downloaded")
-                    # Try alternative search without year restrictions
-                    if "2024" in search_term:
-                        alt_term = search_term.replace("2024", "").strip()
-                        print(f"    🔄 Trying alternative: {alt_term}")
-                        cmd_alt = [
-                            "yt-dlp",
-                            "-f", "best[height<=720]",
-                            "-o", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
-                            "--write-info-json",
-                            f"ytsearch1:{alt_term}"
-                        ]
-                        subprocess.run(cmd_alt, capture_output=True, text=True, timeout=60)
-                        
-                        # Check again
-                        for video_file in event_dir.glob(f"{event_name}_*.mp4"):
-                            if video_file.is_file() and video_file not in downloaded_videos:
-                                downloaded_videos.append(video_file)
-                                print(f"    ✅ Downloaded (alt): {video_file.name}")
                 
                 # Add delay between searches to avoid rate limiting
                 time.sleep(2)

@@ -118,7 +118,7 @@ download-videos:
 	@echo "  7. Yellow Card"
 	@echo "  8. Hat-Trick"
 	@echo ""
-	@echo "📦 Installing yt-dlp if not present..."
+	@echo "📦 Installing yt-dlp..."
 	@pip install -U yt-dlp || echo "⚠️  yt-dlp installation failed"
 	@echo "📹 Starting video download..."
 	@python scripts/download_specific_football_events.py --max_videos_per_event 2
