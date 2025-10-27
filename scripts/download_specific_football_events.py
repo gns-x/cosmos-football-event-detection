@@ -125,11 +125,12 @@ class SpecificFootballEventDownloader:
                 # Download videos using yt-dlp
                 cmd = [
                     "yt-dlp",
-                    "-f", "best[height<=720]",
+                    "-f", "bestvideo[height<=720]+bestaudio/best[height<=720]",
                     "--no-playlist",
                     "--match-filter", "duration > 30 & duration < 300",
                     "-o", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
                     "--write-info-json",
+                    "--quiet",
                     "--no-warnings",
                     "--extractor-args", "youtube:player_client=android",
                     "--user-agent", "Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36",
