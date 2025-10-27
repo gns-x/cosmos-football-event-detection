@@ -64,18 +64,30 @@ class SFTDatasetBuilder:
         return annotations
     
     def find_video_files(self) -> Dict[str, List[Path]]:
-        """Find all processed video files organized by class."""
-        print("🔍 Finding processed video files...")
+        """Find all video files organized by class (processed or raw)."""
+        print("🔍 Finding video files...")
         
         video_files = {}
         video_count = 0
         
+        # First try processed videos
         for video_file in self.processed_videos_dir.rglob("*.mp4"):
             class_name = video_file.parent.name
             if class_name not in video_files:
                 video_files[class_name] = []
             video_files[class_name].append(video_file)
             video_count += 1
+        
+        # If no processed videos, try raw videos
+        if video_count == 0:
+            print("  ⚠️  No processed videos found, checking raw videos...")
+            raw_videos_dir = self.project_root / "01_data_collection" / "raw_videos"
+            for video_file in raw_videos_dir.rglob("*.mp4"):
+                class_name = video_file.parent.name
+                if class_name not in video_files:
+                    video_files[class_name] = []
+                video_files[class_name].append(video_file)
+                video_count += 1
         
         print(f"📹 Found {video_count} video files across {len(video_files)} classes")
         for class_name, files in video_files.items():
@@ -115,38 +127,42 @@ class SFTDatasetBuilder:
         """Create train/validation splits for SFT dataset."""
         print("📊 Creating SFT dataset splits...")
         
-        # Group annotations by class
-        class_annotations = {}
+        # Create mapping of video names to annotations
+        annotation_map = {}
         for annotation in annotations:
             video_name = annotation.get('video_file', '')
-            for video_file in self.processed_videos_dir.rglob(f"*{video_name}*"):
-                if video_file.suffix == '.mp4':
-                    class_name = video_file.parent.name
-                    if class_name not in class_annotations:
-                        class_annotations[class_name] = []
-                    class_annotations[class_name].append({
-                        'video_path': video_file,
-                        'annotations': annotation.get('annotations', [])
-                    })
-                    break
+            annotation_map[video_name] = annotation.get('annotations', [])
         
-        train_data = []
-        val_data = []
+        # Process ALL videos from video_files
+        all_video_items = []
+        for class_name, videos in video_files.items():
+            for video in videos:
+                video_name = video.stem
+                # Try to find matching annotation
+                annotations_for_video = annotation_map.get(video_name, [])
+                
+                # Only include videos that have annotations (NO PLACEHOLDERS)
+                if not annotations_for_video:
+                    print(f"  ⚠️  Skipping {video_name} - no annotation found")
+                    continue
+                
+                all_video_items.append({
+                    'video_path': video,
+                    'annotations': annotations_for_video
+                })
         
-        for class_name, class_data in class_annotations.items():
-            # Shuffle annotations
-            random.shuffle(class_data)
-            
-            # Calculate split sizes
-            total = len(class_data)
-            train_size = int(total * self.train_split)
-            
-            # Split data
-            train_data.extend(class_data[:train_size])
-            val_data.extend(class_data[train_size:])
-            
-            print(f"  {class_name}: {total} total")
-            print(f"    Train: {train_size}, Val: {total - train_size}")
+        # Shuffle all videos
+        random.shuffle(all_video_items)
+        
+        # Split into train/val
+        total = len(all_video_items)
+        train_size = int(total * self.train_split)
+        
+        train_data = all_video_items[:train_size]
+        val_data = all_video_items[train_size:]
+        
+        print(f"  Total videos: {total}")
+        print(f"    Train: {len(train_data)}, Val: {len(val_data)}")
         
         return train_data, val_data
     
@@ -246,13 +262,17 @@ class SFTDatasetBuilder:
                 class_name = video_path.parent.name
                 classes.add(class_name)
         
+        total_examples = train_count + val_count
+        train_pct = (train_count/total_examples*100) if total_examples > 0 else 0.0
+        val_pct = (val_count/total_examples*100) if total_examples > 0 else 0.0
+        
         summary = f"""
 # 🏆 Cosmos Football Video SFT Dataset Summary
 
 ## 📊 Dataset Statistics
-- **Total Examples**: {train_count + val_count}
-- **Training**: {train_count} examples ({train_count/(train_count + val_count)*100:.1f}%)
-- **Validation**: {val_count} examples ({val_count/(train_count + val_count)*100:.1f}%)
+- **Total Examples**: {total_examples}
+- **Training**: {train_count} examples ({train_pct:.1f}%)
+- **Validation**: {val_count} examples ({val_pct:.1f}%)
 
 ## 🏷️ Classes ({len(classes)})
 {chr(10).join(f"- {cls}" for cls in sorted(classes))}
@@ -324,7 +344,7 @@ class SFTDatasetBuilder:
 
 def main():
     parser = argparse.ArgumentParser(description="Build SFT Dataset for Cosmos Football Video Analysis")
-    parser.add_argument("--project-root", default="/Users/Genesis/Desktop/upwork/Nvidia-AI/project-cosmos-football", 
+    parser.add_argument("--project-root", default=".", 
                        help="Project root directory")
     parser.add_argument("--train-split", type=float, default=0.8, 
                        help="Training split ratio")

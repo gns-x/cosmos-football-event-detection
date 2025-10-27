@@ -32,51 +32,60 @@ class EndToEndTester:
         print("\n📹 PHASE 1 & 2: Data Ingestion and Preprocessing Test")
         print("=" * 60)
         
-        # Step 1: Select and download real test video
-        print("1️⃣ Selecting real YouTube video...")
-        # NOTE: Replace with actual goal video URL
-        test_video_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # Replace with real goal video
+        # Step 1: Check existing videos instead of downloading
+        print("1️⃣ Checking existing downloaded videos...")
+        raw_videos_dir = self.project_root / "01_data_collection" / "raw_videos"
         
-        print(f"📹 Test video URL: {test_video_url}")
-        print("⚠️  IMPORTANT: Replace with actual goal video URL before testing!")
-        
-        # Download video
-        print("\n2️⃣ Executing download...")
-        raw_video_path = self.project_root / "01_data_collection" / "raw_videos" / f"{self.test_video_name}.mp4"
-        raw_video_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        try:
-            cmd = [
-                "yt-dlp",
-                "-o", str(raw_video_path),
-                "--format", "best[height<=720]",
-                "--no-playlist",
-                test_video_url
-            ]
-            
-            print(f"📋 Download command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-            
-            if raw_video_path.exists():
-                print(f"✅ Video downloaded: {raw_video_path}")
-            else:
-                print(f"❌ Video not found after download")
-                return False
-                
-        except subprocess.CalledProcessError as e:
-            print(f"❌ Download failed: {e}")
-            print(f"Error: {e.stderr}")
+        if not raw_videos_dir.exists():
+            print("❌ Raw videos directory not found!")
             return False
         
+        # Count videos in each event class
+        event_classes = ["penalty_shot", "goal", "goal_line_event", "woodworks", 
+                        "shot_on_target", "red_card", "yellow_card", "hat_trick"]
+        
+        total_videos = 0
+        for event_class in event_classes:
+            class_dir = raw_videos_dir / event_class
+            if class_dir.exists():
+                video_count = len(list(class_dir.glob("*.mp4")))
+                total_videos += video_count
+                print(f"  📁 {event_class}: {video_count} videos")
+            else:
+                print(f"  📁 {event_class}: 0 videos (directory not found)")
+        
+        if total_videos == 0:
+            print("❌ No videos found! Run 'make download-videos' first.")
+            return False
+        
+        print(f"✅ Found {total_videos} total videos across {len(event_classes)} event classes")
+        
+        # Use first available video for testing
+        test_video_path = None
+        for event_class in event_classes:
+            class_dir = raw_videos_dir / event_class
+            if class_dir.exists():
+                videos = list(class_dir.glob("*.mp4"))
+                if videos:
+                    test_video_path = videos[0]
+                    self.test_video_name = test_video_path.stem
+                    break
+        
+        if not test_video_path:
+            print("❌ No valid video files found!")
+            return False
+        
+        print(f"📹 Using test video: {test_video_path.name}")
+        
         # Step 2: Execute preprocessing
-        print("\n3️⃣ Executing preprocessing to 4fps...")
+        print("\n2️⃣ Executing preprocessing to 4fps...")
         processed_video_path = self.project_root / "02_preprocessing" / "processed_videos" / f"{self.test_video_name}.mp4"
         processed_video_path.parent.mkdir(parents=True, exist_ok=True)
         
         try:
             cmd = [
                 "ffmpeg",
-                "-i", str(raw_video_path),
+                "-i", str(test_video_path),
                 "-r", "4",  # CRITICAL: Set fps to 4
                 "-vf", "scale=720:480",
                 "-c:v", "libx264",

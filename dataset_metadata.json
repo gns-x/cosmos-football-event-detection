@@ -1,0 +1,33 @@
+{
+  "dataset_info": {
+    "name": "Football Event Classification Dataset",
+    "description": "Videos for 8 specific football event classes",
+    "total_classes": 8,
+    "created_date": "2025-10-27 14:36:11",
+    "duration_requirement": "90-180 seconds"
+  },
+  "event_classes": [
+    "penalty_shot",
+    "goal",
+    "goal_line_event",
+    "woodworks",
+    "shot_on_target",
+    "red_card",
+    "yellow_card",
+    "hat_trick"
+  ],
+  "video_counts": {
+    "goal_line_event": 3,
+    "hat_trick": 3,
+    "yellow_card": 3,
+    "shot_on_target": 3,
+    "woodworks": 3,
+    "penalty_shot": 3,
+    "red_card": 3,
+    "goal": 3
+  },
+  "data_format": {
+    "input": "video file path",
+    "output": "JSON with moment description, timestamps, and event type"
+  }
+}

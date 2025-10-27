@@ -16,6 +16,7 @@
 # Football Video Analysis SFT Configuration
 # Based on Cosmos-Reason1-7B model with LoRA fine-tuning
 
+role = "Policy"  # Required by Cosmos RL launcher
 redis = "12800"
 
 [train]
@@ -61,7 +62,7 @@ conversation_column_name = "conversations"
 mini_batch = 1                         # Small mini-batch for memory efficiency
 
 [train.train_policy.dataset]
-name = "/Users/Genesis/Desktop/upwork/Nvidia-AI/project-cosmos-football/04_dataset/train"
+name = "train_llava.json"
 
 [train.ckpt]
 enable_checkpoint = true
@@ -103,6 +104,6 @@ max_image_frames = 10                 # Maximum image frames
 
 # Dataset Configuration
 [custom.dataset]
-annotation_path = "/Users/Genesis/Desktop/upwork/Nvidia-AI/project-cosmos-football/04_dataset/train.jsonl"
-media_path = "/Users/Genesis/Desktop/upwork/Nvidia-AI/project-cosmos-football/02_preprocessing/processed_videos"
+annotation_path = "../04_dataset/train_llava.json"
+media_path = "../02_preprocessing/processed_videos"
 system_prompt = "You are a helpful assistant that can analyze football videos and identify significant events including goals, cards, and shots. For each event, provide a detailed description including player, team, and jersey info, the event class, and precise start/end timestamps."

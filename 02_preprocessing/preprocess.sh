@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Football Video Preprocessing Script
+# Football Video Preprocessing Script - Updated for Azure A100
 # Processes raw videos to 4 FPS as required by Cosmos-Reason1-7B
-# Uses exact ffmpeg command format: ffmpeg -i input.mp4 -r 4 output.mp4
+# Handles incomplete downloads and special characters
 
 set -e
 
@@ -10,18 +10,35 @@ set -e
 RAW_VIDEOS_DIR="../01_data_collection/raw_videos"
 PROCESSED_VIDEOS_DIR="../02_preprocessing/processed_videos"
 TARGET_FPS=4
-TARGET_RESOLUTION="720x480"  # Standard resolution for efficiency
+TARGET_RESOLUTION="720x480"
 VIDEO_CODEC="libx264"
 AUDIO_CODEC="aac"
 
 # Create processed videos directory
 mkdir -p "$PROCESSED_VIDEOS_DIR"
 
-# Function to demonstrate the exact ffmpeg command from Cosmos-Reason1-7B model card
-show_example_command() {
-    echo "📋 Example ffmpeg command (from Cosmos-Reason1-7B model card):"
-    echo "   ffmpeg -i /raw_videos/goal_01.mp4 -r 4 /processed_videos/goal_01.mp4"
-    echo ""
+# Function to clean filename
+clean_filename() {
+    local filename="$1"
+    # Remove special characters and replace with underscores
+    echo "$filename" | sed 's/[^a-zA-Z0-9._-]/_/g' | sed 's/__*/_/g'
+}
+
+# Function to check if video is valid
+is_valid_video() {
+    local video_file="$1"
+    
+    # Check if file exists and has content
+    if [ ! -f "$video_file" ] || [ ! -s "$video_file" ]; then
+        return 1
+    fi
+    
+    # Check if it's a valid video file
+    if ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$video_file" > /dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 # Function to process a single video
@@ -33,13 +50,13 @@ process_video() {
     echo "🎬 Processing: $(basename "$input_file")"
     
     # Extract video info
-    local duration=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$input_file")
-    local fps=$(ffprobe -v quiet -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 "$input_file")
+    local duration=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$input_file" 2>/dev/null || echo "0")
+    local fps=$(ffprobe -v quiet -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 "$input_file" 2>/dev/null || echo "0/1")
     
     echo "  📊 Original: ${duration}s, ${fps} FPS"
     
-    # Process video to 4 FPS using the exact format from Cosmos-Reason1-7B model card
-    ffmpeg -i "$input_file" \
+    # Process video to 4 FPS
+    if ffmpeg -i "$input_file" \
         -r 4 \
         -vf "scale=$TARGET_RESOLUTION" \
         -c:v "$VIDEO_CODEC" \
@@ -47,15 +64,19 @@ process_video() {
         -preset fast \
         -crf 23 \
         -y \
-        "$output_file"
-    
-    # Verify output
-    local new_duration=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$output_file")
-    local new_fps=$(ffprobe -v quiet -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 "$output_file")
-    
-    echo "  ✅ Processed: ${new_duration}s, ${new_fps} FPS"
-    echo "  💾 Saved to: $output_file"
-    echo ""
+        "$output_file" 2>/dev/null; then
+        
+        # Verify output
+        local new_duration=$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$output_file" 2>/dev/null || echo "0")
+        local new_fps=$(ffprobe -v quiet -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 "$output_file" 2>/dev/null || echo "0/1")
+        
+        echo "  ✅ Processed: ${new_duration}s, ${new_fps} FPS"
+        echo "  💾 Saved to: $output_file"
+        return 0
+    else
+        echo "  ❌ Failed to process: $input_file"
+        return 1
+    fi
 }
 
 # Function to process all videos in a directory
@@ -72,25 +93,54 @@ process_directory() {
     # Create output directory for this class
     mkdir -p "$output_dir/$class_name"
     
-    # Find all video files
-    local video_files=($(find "$input_dir" -type f \( -name "*.mp4" -o -name "*.webm" -o -name "*.mkv" -o -name "*.avi" -o -name "*.mov" \)))
+    # Find all valid video files
+    local video_files=()
+    for video_file in "$input_dir"/*.mp4; do
+        if [ -f "$video_file" ] && is_valid_video "$video_file"; then
+            video_files+=("$video_file")
+        fi
+    done
     
     if [ ${#video_files[@]} -eq 0 ]; then
-        echo "⚠️  No video files found in $input_dir"
+        echo "⚠️  No valid video files found in $input_dir"
         return
     fi
     
-    echo "📹 Found ${#video_files[@]} video files"
+    echo "📹 Found ${#video_files[@]} valid video files"
     echo ""
     
     # Process each video
+    local processed_count=0
     for video_file in "${video_files[@]}"; do
         local filename=$(basename "$video_file")
         local name_without_ext="${filename%.*}"
-        local output_file="$output_dir/$class_name/${name_without_ext}_processed.mp4"
+        local clean_name=$(clean_filename "$name_without_ext")
+        local output_file="$output_dir/$class_name/${clean_name}_processed.mp4"
         
-        process_video "$video_file" "$output_file" "$class_name"
+        if process_video "$video_file" "$output_file" "$class_name"; then
+            processed_count=$((processed_count + 1))
+        fi
+        echo ""
     done
+    
+    echo "✅ Processed $processed_count out of ${#video_files[@]} videos for $class_name"
+    echo ""
+}
+
+# Function to clean up incomplete downloads
+cleanup_incomplete_downloads() {
+    echo "🧹 Cleaning up incomplete downloads..."
+    
+    # Remove incomplete files
+    find "$RAW_VIDEOS_DIR" -name "*.part" -delete
+    find "$RAW_VIDEOS_DIR" -name "*.ytdl" -delete
+    find "$RAW_VIDEOS_DIR" -name "*.tmp" -delete
+    
+    # Remove empty files
+    find "$RAW_VIDEOS_DIR" -name "*.mp4" -size 0 -delete
+    
+    echo "✅ Cleanup completed"
+    echo ""
 }
 
 # Function to create video metadata
@@ -160,7 +210,7 @@ validate_videos() {
         total_videos=$((total_videos + 1))
         
         # Check if video is valid
-        if ffprobe -v quiet -show_entries format=duration -of csv=p=0 "$video_file" > /dev/null 2>&1; then
+        if is_valid_video "$video_file"; then
             valid_videos=$((valid_videos + 1))
         else
             invalid_videos=$((invalid_videos + 1))
@@ -185,22 +235,22 @@ validate_videos() {
 
 # Main execution
 main() {
-    echo "🚀 Starting Football Video Preprocessing"
+    echo "🚀 Starting Football Video Preprocessing (Updated for Azure A100)"
     echo "📁 Raw videos directory: $RAW_VIDEOS_DIR"
     echo "📁 Processed videos directory: $PROCESSED_VIDEOS_DIR"
     echo "🎯 Target FPS: $TARGET_FPS"
     echo "📺 Target resolution: $TARGET_RESOLUTION"
     echo ""
     
-    # Show example command from Cosmos-Reason1-7B model card
-    show_example_command
-    
     # Check if raw videos directory exists
     if [ ! -d "$RAW_VIDEOS_DIR" ]; then
         echo "❌ Raw videos directory not found: $RAW_VIDEOS_DIR"
-        echo "💡 Run the download script first: ./01_data_collection/download_videos.sh"
+        echo "💡 Run the download script first: make download-videos"
         exit 1
     fi
+    
+    # Clean up incomplete downloads
+    cleanup_incomplete_downloads
     
     # Process each class directory
     for class_dir in "$RAW_VIDEOS_DIR"/*; do
@@ -208,15 +258,6 @@ main() {
             local class_name=$(basename "$class_dir")
             echo "🏷️  Processing class: $class_name"
             process_directory "$class_dir" "$PROCESSED_VIDEOS_DIR" "$class_name"
-        fi
-    done
-    
-    # Process other directories (channels, playlists)
-    for other_dir in "$RAW_VIDEOS_DIR"/*; do
-        if [ -d "$other_dir" ] && [ "$(basename "$other_dir")" != "channels" ] && [ "$(basename "$other_dir")" != "playlists" ]; then
-            local dir_name=$(basename "$other_dir")
-            echo "📁 Processing directory: $dir_name"
-            process_directory "$other_dir" "$PROCESSED_VIDEOS_DIR" "$dir_name"
         fi
     done
     

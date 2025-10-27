@@ -155,40 +155,60 @@
         let videos = [];
         let annotations = [];
         let selectedClass = null;
+        let eventClasses = [];
         
-        // Load configuration
-        fetch('config.json')
-            .then(response => response.json())
-            .then(config => {
-                initializeTool(config);
-            });
-        
-        function initializeTool(config) {
-            // Create class buttons
-            const classButtons = document.getElementById('classButtons');
-            config.classes.forEach(classItem => {
-                const button = document.createElement('button');
-                button.className = 'class-btn';
-                button.style.backgroundColor = classItem.color;
-                button.textContent = classItem.name;
-                button.onclick = () => selectClass(classItem.id, button);
-                classButtons.appendChild(button);
-            });
-            
-            // Load video list
-            loadVideoList();
+        // Load event classes and videos
+        async function initializeTool() {
+            try {
+                // Load event classes
+                const classesResponse = await fetch('/api/event-classes');
+                eventClasses = await classesResponse.json();
+                
+                // Create class buttons
+                createClassButtons();
+                
+                // Load video list
+                await loadVideoList();
+                
+                // Load progress
+                updateProgress();
+            } catch (error) {
+                console.error('Error initializing tool:', error);
+            }
         }
         
-        function loadVideoList() {
-            // This would typically load from a server
-            // For now, we'll use placeholder data
-            videos = [
-                { path: 'data/video1.mp4', name: 'Video 1' },
-                { path: 'data/video2.mp4', name: 'Video 2' },
-                { path: 'data/video3.mp4', name: 'Video 3' }
+        function createClassButtons() {
+            const classButtons = document.getElementById('classButtons');
+            classButtons.innerHTML = '';
+            
+            const colors = [
+                '#e74c3c', '#3498db', '#2ecc71', '#f39c12',
+                '#9b59b6', '#1abc9c', '#34495e', '#e67e22'
             ];
             
-            loadCurrentVideo();
+            eventClasses.forEach((eventClass, index) => {
+                const button = document.createElement('button');
+                button.className = 'class-btn';
+                button.style.backgroundColor = colors[index % colors.length];
+                button.textContent = eventClass.replace('_', ' ').toUpperCase();
+                button.onclick = () => selectClass(eventClass, button);
+                classButtons.appendChild(button);
+            });
+        }
+        
+        async function loadVideoList() {
+            try {
+                const response = await fetch('/api/videos');
+                videos = await response.json();
+                
+                if (videos.length > 0) {
+                    loadCurrentVideo();
+                } else {
+                    alert('No videos found! Please check the video directory.');
+                }
+            } catch (error) {
+                console.error('Error loading videos:', error);
+            }
         }
         
         function loadCurrentVideo() {
@@ -283,11 +303,139 @@
             }
         }
         
-        function updateProgress() {
-            const progress = ((currentVideo + 1) / videos.length) * 100;
-            document.getElementById('progressBar').style.width = progress + '%';
-            document.getElementById('progressText').textContent = `${currentVideo + 1} / ${videos.length}`;
+        function loadCurrentVideo() {
+            if (currentVideo < videos.length) {
+                const video = videos[currentVideo];
+                document.getElementById('videoPlayer').src = `/api/video/${video.path}`;
+                updateProgress();
+            } else {
+                alert('All videos annotated!');
+            }
         }
+        
+        function selectClass(classId, button) {
+            // Remove active class from all buttons
+            document.querySelectorAll('.class-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to selected button
+            button.classList.add('active');
+            selectedClass = classId;
+        }
+        
+        async function saveAnnotation() {
+            if (!selectedClass) {
+                alert('Please select a class first!');
+                return;
+            }
+            
+            const video = videos[currentVideo];
+            const videoPlayer = document.getElementById('videoPlayer');
+            
+            const annotation = {
+                description: `Event detected: ${selectedClass.replace('_', ' ')}`,
+                start_time: formatTime(videoPlayer.currentTime),
+                end_time: formatTime(videoPlayer.currentTime + 5), // 5 second duration
+                event: selectedClass
+            };
+            
+            annotations.push(annotation);
+            updateAnnotationsList();
+            
+            // Reset selection
+            selectedClass = null;
+            document.querySelectorAll('.class-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+        }
+        
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        function updateAnnotationsList() {
+            const container = document.getElementById('annotations');
+            container.innerHTML = '';
+            
+            annotations.forEach((annotation, index) => {
+                const div = document.createElement('div');
+                div.className = 'annotation-item';
+                div.innerHTML = `
+                    <strong>${annotation.event.replace('_', ' ').toUpperCase()}</strong><br>
+                    <small>Time: ${annotation.start_time} - ${annotation.end_time}</small><br>
+                    <small>Description: ${annotation.description}</small>
+                    <button onclick="removeAnnotation(${index})" style="float: right; background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Remove</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function removeAnnotation(index) {
+            annotations.splice(index, 1);
+            updateAnnotationsList();
+        }
+        
+        async function nextVideo() {
+            // Save current annotations
+            await saveCurrentAnnotations();
+            
+            // Move to next video
+            currentVideo++;
+            annotations = [];
+            loadCurrentVideo();
+        }
+        
+        function skipVideo() {
+            currentVideo++;
+            annotations = [];
+            loadCurrentVideo();
+        }
+        
+        async function saveCurrentAnnotations() {
+            if (annotations.length > 0) {
+                const video = videos[currentVideo];
+                
+                try {
+                    const response = await fetch('/api/annotations', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            video: video.name,
+                            event_class: video.class,
+                            annotations: annotations
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        console.log('Annotations saved successfully');
+                    } else {
+                        console.error('Failed to save annotations');
+                    }
+                } catch (error) {
+                    console.error('Error saving annotations:', error);
+                }
+            }
+        }
+        
+        async function updateProgress() {
+            try {
+                const response = await fetch('/api/progress');
+                const progress = await response.json();
+                
+                document.getElementById('progressBar').style.width = progress.progress + '%';
+                document.getElementById('progressText').textContent = `${progress.annotated} / ${progress.total}`;
+            } catch (error) {
+                console.error('Error loading progress:', error);
+            }
+        }
+        
+        // Initialize the tool when page loads
+        document.addEventListener('DOMContentLoaded', initializeTool);
     </script>
 </body>
 </html>

@@ -1,37 +1,55 @@
 #!/usr/bin/env python3
 """
-Comprehensive Football Video Analysis Evaluation Script
-Measures accuracy across multiple dimensions:
-1. Event Classification (Precision, Recall, F1-score)
-2. Temporal Accuracy (Temporal IoU)
-3. Description Quality (ROUGE, BLEU)
+Simplified Football Video Analysis Evaluation Script
+Basic evaluation without external dependencies
 """
 
 import os
 import json
 import argparse
-import numpy as np
 from pathlib import Path
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any
 from datetime import datetime
-import re
 
-# Evaluation metrics
-from sklearn.metrics import precision_recall_fscore_support, classification_report, confusion_matrix
-from rouge_score import rouge_scorer
-from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
-import nltk
-
-# Download required NLTK data
+# Try to import optional dependencies, fall back to basic implementations
 try:
-    nltk.download('punkt', quiet=True)
-    nltk.download('stopwords', quiet=True)
-except:
-    pass
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+    print("⚠️  NumPy not available, using basic math operations")
+
+try:
+    from sklearn.metrics import precision_recall_fscore_support, classification_report, confusion_matrix
+    HAS_SKLEARN = True
+except ImportError:
+    HAS_SKLEARN = False
+    print("⚠️  Scikit-learn not available, using basic accuracy calculation")
+
+try:
+    from rouge_score import rouge_scorer
+    HAS_ROUGE = True
+except ImportError:
+    HAS_ROUGE = False
+    print("⚠️  Rouge-score not available, skipping ROUGE metrics")
+
+try:
+    from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+    import nltk
+    HAS_NLTK = True
+    # Download required NLTK data
+    try:
+        nltk.download('punkt', quiet=True)
+        nltk.download('stopwords', quiet=True)
+    except:
+        pass
+except ImportError:
+    HAS_NLTK = False
+    print("⚠️  NLTK not available, skipping BLEU metrics")
 
 
 class FootballVideoEvaluator:
-    """Comprehensive evaluator for football video analysis."""
+    """Simplified evaluator for football video analysis."""
     
     def __init__(self, test_file: str, results_dir: str, ground_truth_dir: str):
         self.test_file = Path(test_file)
@@ -39,9 +57,16 @@ class FootballVideoEvaluator:
         self.ground_truth_dir = Path(ground_truth_dir)
         self.results_dir.mkdir(parents=True, exist_ok=True)
         
-        # Initialize metrics
-        self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
-        self.bleu_smoothing = SmoothingFunction().method1
+        # Initialize metrics (only if available)
+        if HAS_ROUGE:
+            self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
+        else:
+            self.rouge_scorer = None
+            
+        if HAS_NLTK:
+            self.bleu_smoothing = SmoothingFunction().method1
+        else:
+            self.bleu_smoothing = None
         
         # Load test data
         self.test_data = self._load_test_data()
@@ -134,29 +159,58 @@ class FootballVideoEvaluator:
             pred_events.append(pred.get("event", "Unknown"))
             gt_events.append(gt.get("event", "Unknown"))
         
-        # Calculate metrics
-        precision, recall, f1, support = precision_recall_fscore_support(
-            gt_events, pred_events, average='weighted', zero_division=0
-        )
+        # Overall accuracy (always available)
+        if len(pred_events) == 0:
+            return {"accuracy": 0.0, "total": 0}
         
-        # Per-class metrics
-        precision_macro, recall_macro, f1_macro, _ = precision_recall_fscore_support(
-            gt_events, pred_events, average='macro', zero_division=0
-        )
-        
-        # Overall accuracy
         accuracy = sum(1 for p, g in zip(pred_events, gt_events) if p == g) / len(pred_events)
         
-        return {
-            "accuracy": accuracy,
-            "precision_weighted": precision,
-            "recall_weighted": recall,
-            "f1_weighted": f1,
-            "precision_macro": precision_macro,
-            "recall_macro": recall_macro,
-            "f1_macro": f1_macro,
-            "classification_report": classification_report(gt_events, pred_events, zero_division=0)
-        }
+        result = {"accuracy": accuracy}
+        
+        # Use sklearn if available, otherwise basic metrics
+        if HAS_SKLEARN:
+            try:
+                precision, recall, f1, support = precision_recall_fscore_support(
+                    gt_events, pred_events, average='weighted', zero_division=0
+                )
+                
+                precision_macro, recall_macro, f1_macro, _ = precision_recall_fscore_support(
+                    gt_events, pred_events, average='macro', zero_division=0
+                )
+                
+                result.update({
+                    "precision_weighted": precision,
+                    "recall_weighted": recall,
+                    "f1_weighted": f1,
+                    "precision_macro": precision_macro,
+                    "recall_macro": recall_macro,
+                    "f1_macro": f1_macro,
+                    "classification_report": classification_report(gt_events, pred_events, zero_division=0)
+                })
+            except Exception as e:
+                print(f"⚠️  Error calculating sklearn metrics: {e}")
+                result.update({
+                    "precision_weighted": 0.0,
+                    "recall_weighted": 0.0,
+                    "f1_weighted": 0.0,
+                    "precision_macro": 0.0,
+                    "recall_macro": 0.0,
+                    "f1_macro": 0.0,
+                    "classification_report": "Error calculating detailed metrics"
+                })
+        else:
+            # Basic metrics without sklearn
+            result.update({
+                "precision_weighted": accuracy,
+                "recall_weighted": accuracy,
+                "f1_weighted": accuracy,
+                "precision_macro": accuracy,
+                "recall_macro": accuracy,
+                "f1_macro": accuracy,
+                "classification_report": "Basic accuracy only (sklearn not available)"
+            })
+        
+        return result
     
     def evaluate_temporal_accuracy(self, predictions: List[Dict], ground_truth: List[Dict]) -> Dict[str, float]:
         """Evaluate temporal accuracy using tIoU."""
@@ -181,16 +235,30 @@ class FootballVideoEvaluator:
         if not tious:
             return {"mean_tiou": 0.0, "hit_rate": 0.0, "total_evaluated": 0}
         
+        # Calculate statistics with or without numpy
+        if HAS_NUMPY:
+            mean_tiou = np.mean(tious)
+            median_tiou = np.median(tious)
+            std_tiou = np.std(tious)
+        else:
+            # Basic statistics without numpy
+            mean_tiou = sum(tious) / len(tious)
+            sorted_tious = sorted(tious)
+            n = len(sorted_tious)
+            median_tiou = sorted_tious[n//2] if n % 2 == 1 else (sorted_tious[n//2-1] + sorted_tious[n//2]) / 2
+            variance = sum((x - mean_tiou) ** 2 for x in tious) / len(tious)
+            std_tiou = variance ** 0.5
+        
         return {
-            "mean_tiou": np.mean(tious),
-            "median_tiou": np.median(tious),
-            "std_tiou": np.std(tious),
+            "mean_tiou": mean_tiou,
+            "median_tiou": median_tiou,
+            "std_tiou": std_tiou,
             "hit_rate": hits / len(tious),
             "total_evaluated": len(tious)
         }
     
     def evaluate_description_quality(self, predictions: List[Dict], ground_truth: List[Dict]) -> Dict[str, float]:
-        """Evaluate description quality using ROUGE and BLEU."""
+        """Evaluate description quality using ROUGE and BLEU (if available)."""
         print("📝 Evaluating Description Quality...")
         
         rouge_scores = {"rouge1": [], "rouge2": [], "rougeL": []}
@@ -201,35 +269,54 @@ class FootballVideoEvaluator:
             gt_desc = gt.get("description", "")
             
             if pred_desc and gt_desc:
-                # ROUGE scores
-                rouge_scores_dict = self.rouge_scorer.score(gt_desc, pred_desc)
-                for metric in rouge_scores:
-                    rouge_scores[metric].append(rouge_scores_dict[metric].fmeasure)
+                # ROUGE scores (if available)
+                if self.rouge_scorer:
+                    try:
+                        rouge_scores_dict = self.rouge_scorer.score(gt_desc, pred_desc)
+                        for metric in rouge_scores:
+                            rouge_scores[metric].append(rouge_scores_dict[metric].fmeasure)
+                    except Exception as e:
+                        print(f"⚠️  Error calculating ROUGE: {e}")
                 
-                # BLEU score
-                try:
-                    # Tokenize for BLEU
-                    pred_tokens = nltk.word_tokenize(pred_desc.lower())
-                    gt_tokens = nltk.word_tokenize(gt_desc.lower())
-                    
-                    bleu = sentence_bleu([gt_tokens], pred_tokens, smoothing_function=self.bleu_smoothing)
-                    bleu_scores.append(bleu)
-                except:
-                    bleu_scores.append(0.0)
+                # BLEU score (if available)
+                if self.bleu_smoothing:
+                    try:
+                        # Tokenize for BLEU
+                        pred_tokens = nltk.word_tokenize(pred_desc.lower())
+                        gt_tokens = nltk.word_tokenize(gt_desc.lower())
+                        
+                        bleu = sentence_bleu([gt_tokens], pred_tokens, smoothing_function=self.bleu_smoothing)
+                        bleu_scores.append(bleu)
+                    except Exception as e:
+                        print(f"⚠️  Error calculating BLEU: {e}")
+                        bleu_scores.append(0.0)
         
         # Calculate averages
         results = {}
+        
+        # ROUGE metrics
         for metric in rouge_scores:
             if rouge_scores[metric]:
-                results[f"rouge_{metric}_mean"] = np.mean(rouge_scores[metric])
-                results[f"rouge_{metric}_std"] = np.std(rouge_scores[metric])
+                if HAS_NUMPY:
+                    results[f"rouge_{metric}_mean"] = np.mean(rouge_scores[metric])
+                    results[f"rouge_{metric}_std"] = np.std(rouge_scores[metric])
+                else:
+                    results[f"rouge_{metric}_mean"] = sum(rouge_scores[metric]) / len(rouge_scores[metric])
+                    variance = sum((x - results[f"rouge_{metric}_mean"]) ** 2 for x in rouge_scores[metric]) / len(rouge_scores[metric])
+                    results[f"rouge_{metric}_std"] = variance ** 0.5
             else:
                 results[f"rouge_{metric}_mean"] = 0.0
                 results[f"rouge_{metric}_std"] = 0.0
         
+        # BLEU metrics
         if bleu_scores:
-            results["bleu_mean"] = np.mean(bleu_scores)
-            results["bleu_std"] = np.std(bleu_scores)
+            if HAS_NUMPY:
+                results["bleu_mean"] = np.mean(bleu_scores)
+                results["bleu_std"] = np.std(bleu_scores)
+            else:
+                results["bleu_mean"] = sum(bleu_scores) / len(bleu_scores)
+                variance = sum((x - results["bleu_mean"]) ** 2 for x in bleu_scores) / len(bleu_scores)
+                results["bleu_std"] = variance ** 0.5
         else:
             results["bleu_mean"] = 0.0
             results["bleu_std"] = 0.0
@@ -243,9 +330,8 @@ class FootballVideoEvaluator:
         print("🚀 Starting Comprehensive Football Video Analysis Evaluation")
         print("=" * 70)
         
-        # For now, we'll create mock predictions since we don't have the trained model yet
-        # In a real scenario, you would load predictions from the fine-tuned model
-        predictions = self._create_mock_predictions()
+        # Load predictions from generated predictions file or create them using the model
+        predictions = self._load_or_generate_predictions()
         
         # Run evaluations
         event_metrics = self.evaluate_event_classification(predictions, self.test_data)
@@ -264,26 +350,40 @@ class FootballVideoEvaluator:
         
         return results
     
-    def _create_mock_predictions(self) -> List[Dict[str, Any]]:
-        """Create mock predictions for testing (replace with actual model predictions)."""
-        predictions = []
+    def _load_or_generate_predictions(self) -> List[Dict[str, Any]]:
+        """Load predictions from file or generate using the model."""
+        predictions_file = Path(self.results_dir) / "predictions.json"
         
-        for test_item in self.test_data:
-            # Mock prediction - in reality, this would come from your fine-tuned model
-            video_name = Path(test_item["video_path"]).name
-            class_name = test_item["class"].replace("_", " ").title()
+        # Try to load existing predictions
+        if predictions_file.exists():
+            print(f"📥 Loading existing predictions from {predictions_file}")
+            with open(predictions_file, 'r') as f:
+                predictions = json.load(f)
+            return predictions
+        
+        # If no predictions exist, trigger generation
+        print("⚠️  No predictions file found. Will generate using trained model...")
+        
+        # Import and use the prediction generator
+        try:
+            from generate_predictions import PredictionGenerator
             
-            prediction = {
-                "video": test_item["video_path"],
-                "event": class_name,
-                "description": f"Mock prediction for {class_name} event in {video_name}",
-                "start_time": "0:05",
-                "end_time": "0:15",
-                "confidence": 0.85
-            }
-            predictions.append(prediction)
-        
-        return predictions
+            generator = PredictionGenerator(
+                test_file=str(self.test_file),
+                model_path="../05_training/checkpoints/football_sft",
+                output_dir=str(self.results_dir),
+                lora_path="../05_training/checkpoints/football_sft"
+            )
+            
+            predictions = generator.generate_all_predictions()
+            generator.save_predictions(predictions)
+            
+            return predictions
+            
+        except Exception as e:
+            print(f"❌ Failed to generate predictions: {e}")
+            print("⚠️  Returning empty predictions list")
+            return []
     
     def _calculate_overall_score(self, event_metrics: Dict, temporal_metrics: Dict, description_metrics: Dict) -> float:
         """Calculate overall evaluation score."""
@@ -346,8 +446,8 @@ def main():
     """Main evaluation function."""
     parser = argparse.ArgumentParser(description="Football Video Analysis Evaluation")
     parser.add_argument("--test_file", type=str, 
-                       default="../04_dataset/test.jsonl",
-                       help="Path to test.jsonl file")
+                       default="../04_dataset/validation.jsonl",
+                       help="Path to validation.jsonl file")
     parser.add_argument("--results_dir", type=str,
                        default="./results",
                        help="Directory to save evaluation results")

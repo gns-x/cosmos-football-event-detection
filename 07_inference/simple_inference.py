@@ -1,48 +1,40 @@
 #!/usr/bin/env python3
 """
-Simplified Football Video Analysis Inference
-Demonstrates LoRA integration with vLLM
+Professional Football Video Analysis Inference with LoRA
+Processes all videos from data collection folder
 Based on your exact specifications
 """
 
 import os
+import sys
 import json
+import argparse
 from pathlib import Path
 from vllm import LLM, SamplingParams, LoRARequest
 from transformers import AutoProcessor
 from qwen_vl_utils import process_vision_info
 
 
-def main():
-    """Simplified inference with LoRA weights."""
-    print("🏈 Football Video Analysis - Simplified Inference")
-    print("=" * 60)
+def find_all_videos(data_collection_dir: str):
+    """Find all videos in the data collection directory."""
+    videos = []
+    data_dir = Path(data_collection_dir)
     
-    # Configuration
-    MODEL_PATH = "nvidia/Cosmos-Reason1-7B"
-    LORA_PATH = "../05_training/checkpoints/football_sft"
-    VIDEO_PATH = "path/to/your/football_video.mp4"  # Replace with actual video path
+    if not data_dir.exists():
+        return videos
     
-    print(f"📋 Base Model: {MODEL_PATH}")
-    print(f"📋 LoRA Path: {LORA_PATH}")
-    print(f"📋 Video: {VIDEO_PATH}")
+    # Search recursively for video files
+    for ext in ['*.mp4', '*.avi', '*.mov', '*.mkv']:
+        videos.extend(data_dir.rglob(ext))
     
-    # Load the base model with LoRA support
-    print("\n🚀 Loading model with LoRA support...")
-    llm = LLM(
-        model=MODEL_PATH,
-        limit_mm_per_prompt={"video": 10},
-        enable_lora=True,  # Enable LoRA support
-        dtype="bfloat16",
-        gpu_memory_utilization=0.8,
-    )
+    return sorted(videos)
+
+
+def process_video(video_path: str, llm, processor, lora_path: str = None):
+    """Process a single video and return analysis."""
+    print(f"\n🎬 Processing: {Path(video_path).name}")
     
-    # Load processor
-    processor = AutoProcessor.from_pretrained(MODEL_PATH)
-    
-    print("✅ Model loaded successfully!")
-    
-    # Create the football analysis prompt (from Phase 3)
+    # Create the football analysis prompt
     football_prompt = "Analyze the following football clip. Identify all significant events including goals, cards, and shots. For each event, provide a detailed description including player, team, and jersey info, the event class, and precise start/end timestamps. Output *only* a valid JSON array."
     
     # Create video messages
@@ -57,8 +49,8 @@ def main():
                 {"type": "text", "text": football_prompt},
                 {
                     "type": "video",
-                    "video": f"file://{os.path.abspath(VIDEO_PATH)}",
-                    "fps": 4,  # 4 FPS as required by Cosmos-Reason1-7B
+                    "video": f"file://{os.path.abspath(video_path)}",
+                    "fps": 4,
                 }
             ],
         },
@@ -84,7 +76,7 @@ def main():
     
     # Set up sampling parameters
     sampling_params = SamplingParams(
-        max_tokens=4096,  # Per model card
+        max_tokens=4096,
         temperature=0.6,
         top_p=0.95,
     )
@@ -96,39 +88,123 @@ def main():
         "mm_processor_kwargs": video_kwargs,
     }
     
-    # *** THIS IS THE KEY ***
-    # Add the LoRA adapter to the request
-    lora_request = LoRARequest(
-        lora_name="football_analysis_lora",
-        lora_int_id=1,
-        lora_local_path=LORA_PATH
-    )
-    llm_inputs["lora_request"] = lora_request
-    
-    print("\n🎬 Running inference with LoRA weights...")
+    # Add LoRA adapter if available
+    if lora_path and os.path.exists(lora_path):
+        lora_request = LoRARequest(
+            lora_name="football_analysis_lora",
+            lora_int_id=1,
+            lora_local_path=lora_path
+        )
+        llm_inputs["lora_request"] = lora_request
     
     # Generate response
     outputs = llm.generate([llm_inputs], sampling_params=sampling_params)
     generated_json_string = outputs[0].outputs[0].text
     
-    print("\n" + "=" * 60)
-    print("📊 FOOTBALL VIDEO ANALYSIS RESULT")
-    print("=" * 60)
-    print(generated_json_string)
-    print("=" * 60)
-    
-    # This string *is* your final JSON output
-    print("\n✅ Inference completed successfully!")
-    print("📄 The generated JSON string above is your final output")
-    
-    # Try to parse and pretty-print the JSON
+    # Parse JSON
     try:
-        parsed_result = json.loads(generated_json_string)
-        print("\n📋 Parsed JSON Result:")
-        print(json.dumps(parsed_result, indent=2))
+        analysis = json.loads(generated_json_string)
     except json.JSONDecodeError:
-        print("\n⚠️  Generated text is not valid JSON, but this is the raw output from the model")
+        analysis = {"raw_output": generated_json_string}
+    
+    return {
+        "video_path": video_path,
+        "video_name": Path(video_path).name,
+        "analysis": analysis
+    }
+
+
+def main():
+    """Main inference function with batch processing."""
+    parser = argparse.ArgumentParser(description="Football Video Analysis Inference")
+    parser.add_argument("--video_path", type=str, help="Path to single video")
+    parser.add_argument("--data_collection_dir", type=str, 
+                       default="../01_data_collection/raw_videos",
+                       help="Directory containing videos")
+    parser.add_argument("--output_dir", type=str, default="./inference_results",
+                       help="Output directory")
+    parser.add_argument("--model_path", type=str, default="nvidia/Cosmos-Reason1-7B",
+                       help="Model path")
+    parser.add_argument("--lora_path", type=str, default="../05_training/checkpoints/football_sft",
+                       help="LoRA adapter path")
+    parser.add_argument("--process_all", action="store_true",
+                       help="Process all videos")
+    
+    args = parser.parse_args()
+    
+    print("🏈 Football Video Analysis - Professional Inference")
+    print("=" * 60)
+    print(f"📋 Base Model: {args.model_path}")
+    print(f"📋 LoRA Path: {args.lora_path}")
+    
+    # Determine videos to process
+    if args.process_all or not args.video_path:
+        videos = find_all_videos(args.data_collection_dir)
+        if not videos:
+            print(f"❌ No videos found in {args.data_collection_dir}")
+            return 1
+        print(f"📁 Found {len(videos)} videos to process")
+    else:
+        if not os.path.exists(args.video_path):
+            print(f"❌ Video not found: {args.video_path}")
+            return 1
+        videos = [args.video_path]
+    
+    # Load the base model with LoRA support
+    print("\n🚀 Loading model with LoRA support...")
+    llm = LLM(
+        model=args.model_path,
+        limit_mm_per_prompt={"video": 10},
+        enable_lora=True,
+        dtype="bfloat16",
+        gpu_memory_utilization=0.8,
+    )
+    
+    # Load processor
+    processor = AutoProcessor.from_pretrained(args.model_path)
+    
+    print("✅ Model loaded successfully!")
+    
+    # Process all videos
+    results = []
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    for i, video in enumerate(videos, 1):
+        print(f"\n[{i}/{len(videos)}] Processing video...")
+        try:
+            result = process_video(video, llm, processor, args.lora_path)
+            results.append(result)
+            
+            # Save individual result
+            video_name = Path(video).stem
+            result_file = output_dir / f"{video_name}_analysis.json"
+            with open(result_file, 'w') as f:
+                json.dump(result, f, indent=2)
+            print(f"✅ Saved: {result_file}")
+            
+        except Exception as e:
+            print(f"❌ Error processing {video}: {e}")
+            results.append({
+                "video_path": str(video),
+                "error": str(e)
+            })
+    
+    # Save batch summary
+    batch_summary = {
+        "total_videos": len(videos),
+        "processed": len([r for r in results if "error" not in r]),
+        "errors": len([r for r in results if "error" in r]),
+        "results": results
+    }
+    
+    batch_file = output_dir / "batch_summary.json"
+    with open(batch_file, 'w') as f:
+        json.dump(batch_summary, f, indent=2)
+    
+    print(f"\n📊 Batch Summary: {batch_file}")
+    print(f"✅ Processed {batch_summary['processed']}/{batch_summary['total_videos']} videos")
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
