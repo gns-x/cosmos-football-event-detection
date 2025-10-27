@@ -131,7 +131,8 @@ class SpecificFootballEventDownloader:
                     "-o", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
                     "--write-info-json",
                     "--no-warnings",
-                    "--extractor-args", "youtube:player_client=android",  # Use Android client to bypass restrictions
+                    "--extractor-args", "youtube:player_client=android",
+                    "--cookies-from-browser", "chrome",  # Use Chrome cookies to bypass bot detection
                     f"ytsearch{max_videos - len(downloaded_videos)}:{search_term}"
                 ]
                 
@@ -142,8 +143,23 @@ class SpecificFootballEventDownloader:
                 if result.returncode != 0:
                     print(f"    ❌ yt-dlp failed (exit code {result.returncode})")
                     # Only show error if it's not about no matches
-                    if "No matching results" not in result.stderr:
+                    if "No matching results" not in result.stderr and "Sign in to confirm" not in result.stderr:
                         print(f"    📋 Error: {result.stderr[:150]}")
+                    elif "Sign in to confirm" in result.stderr:
+                        print(f"    🔧 Bot detection - trying without cookies...")
+                        # Retry without cookies
+                        cmd_no_cookies = [
+                            "yt-dlp",
+                            "-f", "bestvideo[height<=720]+bestaudio/best[height<=720]",
+                            "--no-playlist",
+                            "--match-filter", "duration > 30 & duration < 300",
+                            "-o", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
+                            "--write-info-json",
+                            "--no-warnings",
+                            "--extractor-args", "youtube:player_client=android",
+                            f"ytsearch1:{search_term}"
+                        ]
+                        subprocess.run(cmd_no_cookies, capture_output=True, text=True, timeout=60)
                 
                 # Find downloaded videos
                 count_before = len(downloaded_videos)
