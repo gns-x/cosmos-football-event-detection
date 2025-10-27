@@ -140,14 +140,13 @@ class SpecificFootballEventDownloader:
                 print(f"    ⬇️  Downloading...")
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
                 
-                # Debug output
+                # Debug output - show actual error
                 if result.returncode != 0:
                     print(f"    ❌ yt-dlp failed (exit code {result.returncode})")
-                    # Only show critical errors
-                    if "Sign in to confirm" in result.stderr:
-                        print(f"    ⚠️  Bot detection triggered - skipping this search")
-                    elif "ERROR" in result.stderr:
-                        print(f"    📋 Error: {result.stderr[:100]}...")
+                    print(f"    📋 STDOUT: {result.stdout[:200]}")
+                    print(f"    📋 STDERR: {result.stderr[:200]}")
+                else:
+                    print(f"    ✅ yt-dlp succeeded")
                 
                 # Find downloaded videos
                 count_before = len(downloaded_videos)
