@@ -233,21 +233,21 @@ class ManualAnnotator:
 
 def main():
     parser = argparse.ArgumentParser(description="Interactive Manual Annotation Tool")
-    parser.add_argument("--project-root", default="/Users/Genesis/Desktop/upwork/Nvidia-AI/project-cosmos-football",
+    parser.add_argument("--project-root", default=".",
                        help="Project root directory")
     parser.add_argument("--video", type=str,
                        help="Specific video file to annotate")
-    parser.add_argument("--class", type=str,
+    parser.add_argument("--class-name", type=str, dest="class_name",
                        help="Class name for the video")
     
     args = parser.parse_args()
     
     annotator = ManualAnnotator(args.project_root)
     
-    if args.video and args.class:
+    if args.video and args.class_name:
         # Annotate specific video
         video_path = Path(args.video)
-        annotator.annotate_single_video(video_path, args.class)
+        annotator.annotate_single_video(video_path, args.class_name)
     else:
         # Annotate all videos
         annotator.annotate_all_videos()
