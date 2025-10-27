@@ -133,7 +133,7 @@ class SpecificFootballEventDownloader:
                     "--no-warnings",
                     "--extractor-args", "youtube:player_client=android",  # Use Android client to bypass restrictions
                     f"ytsearch{max_videos - len(downloaded_videos)}:{search_term}"
-负数       ]
+                ]
                 
                 print(f"    ⬇️  Downloading...")
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
