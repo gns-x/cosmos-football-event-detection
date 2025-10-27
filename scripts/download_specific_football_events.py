@@ -104,16 +104,31 @@ class SpecificFootballEventDownloader:
             }
         }
     
-    def download_videos_for_event(self, event_name: str, event_info: Dict, max_videos: int = 8) -> List[Path]:
+    def _check_ffmpeg_available(self) -> bool:
+        """Check if ffmpeg is available in the system."""
+        try:
+            result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
+            return result.returncode == 0
+        except (FileNotFoundError, Exception):
+            return False
+    
+    def download_videos_for_event(self, event_name: str, event_info: Dict, max_videos: int = 8, prefer_mp4: bool = True) -> List[Path]:
         """Download videos for a specific event class."""
         print(f"🎯 Downloading {event_name.replace('_', ' ').title()} videos...")
         
         event_dir = self.download_dir / event_name
         event_dir.mkdir(exist_ok=True)
+        print(f"    [DEBUG] Event directory: {event_dir.absolute()}")
+        print(f"    [DEBUG] Event directory exists: {event_dir.exists()}")
+        print(f"    [DEBUG] Event directory is writable: {os.access(event_dir, os.W_OK)}")
         
         downloaded_videos = []
         search_terms = event_info["search_terms"]
         duration_range = event_info["duration_range"]
+        
+        # Check if ffmpeg is available
+        ffmpeg_available = self._check_ffmpeg_available()
+        print(f"    [DEBUG] ffmpeg available: {ffmpeg_available}")
         
         for i, search_term in enumerate(search_terms):
             if len(downloaded_videos) >= max_videos:
@@ -123,31 +138,73 @@ class SpecificFootballEventDownloader:
             
             try:
                 # Download videos using yt-dlp with flexible duration filter
+                # Try mp4 first if ffmpeg is available, otherwise use best available format
+                if prefer_mp4 and ffmpeg_available:
+                    format_spec = "bestvideo[height<=720]+bestaudio[ext=m4a]/best[height<=720]/best"
+                    output_template = f"{event_name}_%(title)s.%(ext)s"
+                else:
+                    # Without ffmpeg, download in whatever format is available
+                    format_spec = "best[height<=720]"
+                    output_template = f"{event_name}_%(title)s.%(ext)s"
+                    print(f"    [DEBUG] Using format without ffmpeg remuxing: {format_spec}")
+                
                 cmd = [
                     "yt-dlp",
                     "--max-downloads", str(max_videos - len(downloaded_videos)),
-                    "--format", "best[height<=720]",
+                    "--format", format_spec,
                     "--match-filter", f"duration > 30 & duration < 300",  # 30 seconds to 5 minutes (more flexible)
-                    "--output", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
+                    "--output", str(event_dir / output_template),
                     "--write-info-json",
                     "--write-thumbnail",
                     "--ignore-errors",  # Continue on individual video errors
+                    "-v",  # Verbose logging
                     f"ytsearch10:{search_term}"
                 ]
                 
+                print(f"    [DEBUG] Executing command: {' '.join(cmd)}")
+                print(f"    [DEBUG] Output directory exists: {event_dir.exists()}")
+                print(f"    [DEBUG] Files before download: {list(event_dir.glob('*'))}")
+                
                 result = subprocess.run(cmd, capture_output=True, text=True)
                 
-                # Find downloaded videos (even if some failed)
-                for video_file in event_dir.glob(f"{event_name}_*.mp4"):
-                    if video_file.is_file() and video_file not in downloaded_videos:
-                        downloaded_videos.append(video_file)
-                        print(f"    ✅ Downloaded: {video_file.name}")
+                print(f"    [DEBUG] Return code: {result.returncode}")
+                print(f"    [DEBUG] STDOUT length: {len(result.stdout)} chars")
+                print(f"    [DEBUG] STDERR length: {len(result.stderr)} chars")
+                
+                if result.stdout:
+                    print(f"    [DEBUG] STDOUT:\n{result.stdout[-1000:]}")  # Last 1000 chars
+                if result.stderr:
+                    print(f"    [DEBUG] STDERR:\n{result.stderr[-1000:]}")  # Last 1000 chars
+                
+                print(f"    [DEBUG] Files after download: {list(event_dir.glob('*'))}")
+                
+                # Check what files were actually downloaded
+                all_files = list(event_dir.glob(f"{event_name}_*"))
+                mp4_files = list(event_dir.glob(f"{event_name}_*.mp4"))
+                json_files = list(event_dir.glob(f"{event_name}_*.json"))
+                thumbnail_files = list(event_dir.glob(f"{event_name}_*.jpg"))
+                
+                print(f"    [DEBUG] Total files found: {len(all_files)}")
+                print(f"    [DEBUG] MP4 files: {len(mp4_files)}")
+                print(f"    [DEBUG] JSON files: {len(json_files)}")
+                print(f"    [DEBUG] Thumbnail files: {len(thumbnail_files)}")
+                
+                # Find downloaded videos (check for various video formats, not just mp4)
+                video_extensions = ['*.mp4', '*.webm', '*.mkv', '*.flv', '*.m4a']
+                for ext in video_extensions:
+                    for video_file in event_dir.glob(f"{event_name}_*{ext.replace('*', '')}"):
+                        if video_file.is_file() and video_file not in downloaded_videos:
+                            downloaded_videos.append(video_file)
+                            file_size = video_file.stat().st_size
+                            print(f"    ✅ Downloaded: {video_file.name} ({file_size / 1024 / 1024:.2f} MB, {ext.replace('*.', '')})")
                 
                 # Add delay between searches to avoid rate limiting
                 time.sleep(2)
                 
             except Exception as e:
                 print(f"    ❌ Download failed: {e}")
+                import traceback
+                print(f"    [DEBUG] Traceback: {traceback.format_exc()}")
                 continue
         
         return downloaded_videos
@@ -183,7 +240,7 @@ class SpecificFootballEventDownloader:
             print(f"❌ M3U8 error: {e}")
             return None
     
-    def download_all_events(self, max_videos_per_event: int = 8) -> Dict[str, List[Path]]:
+    def download_all_events(self, max_videos_per_event: int = 8, prefer_mp4: bool = True) -> Dict[str, List[Path]]:
         """Download videos for all 8 event classes."""
         print("🚀 Downloading Specific Football Event Videos")
         print("=" * 60)
@@ -198,7 +255,7 @@ class SpecificFootballEventDownloader:
             print(f"\n📁 Processing: {event_name.replace('_', ' ').title()}")
             
             # Download videos for this event
-            downloaded_videos = self.download_videos_for_event(event_name, event_info, max_videos_per_event)
+            downloaded_videos = self.download_videos_for_event(event_name, event_info, max_videos_per_event, prefer_mp4)
             results[event_name] = downloaded_videos
             
             print(f"  ✅ {event_name.replace('_', ' ').title()}: {len(downloaded_videos)} videos downloaded")
@@ -285,6 +342,56 @@ class SpecificFootballEventDownloader:
         
         return metadata
 
+def check_dependencies():
+    """Check if required dependencies are installed."""
+    print("🔍 Checking dependencies...")
+    print(f"  [DEBUG] Environment: {os.environ.get('USER', 'unknown')}@")
+    print(f"  [DEBUG] Python version: {sys.version}")
+    print(f"  [DEBUG] Platform: {sys.platform}")
+    print(f"  [DEBUG] Working directory: {os.getcwd()}")
+    
+    # Check yt-dlp
+    try:
+        result = subprocess.run(["yt-dlp", "--version"], capture_output=True, text=True)
+        yt_dlp_version = result.stdout.strip()
+        print(f"  ✅ yt-dlp found: {yt_dlp_version}")
+        
+        # Check yt-dlp format preferences
+        check_fmt = subprocess.run(["yt-dlp", "-f", "best[height<=720]", "--list-formats", "https://www.youtube.com/watch?v=test"], 
+                                   capture_output=True, text=True, timeout=5)
+        print(f"  [DEBUG] yt-dlp format test return code: {check_fmt.returncode}")
+    except FileNotFoundError:
+        print("  ❌ yt-dlp not found! Please install it: pip install yt-dlp")
+        return False
+    except Exception as e:
+        print(f"  ❌ Error checking yt-dlp: {e}")
+        return False
+    
+    # Check ffmpeg
+    try:
+        result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
+        ffmpeg_version = result.stdout.split('\n')[0]
+        print(f"  ✅ ffmpeg found: {ffmpeg_version}")
+    except FileNotFoundError:
+        print("  ⚠️  ffmpeg not found! Video downloading may fail.")
+        print("  Install it: sudo apt-get install ffmpeg (Linux) or brew install ffmpeg (Mac)")
+        return False
+    except Exception as e:
+        print(f"  ⚠️  Error checking ffmpeg: {e}")
+        return False
+    
+    # Check ffprobe
+    try:
+        result = subprocess.run(["ffprobe", "-version"], capture_output=True, text=True)
+        ffprobe_version = result.stdout.split('\n')[0]
+        print(f"  ✅ ffprobe found: {ffprobe_version}")
+    except FileNotFoundError:
+        print("  ⚠️  ffprobe not found! Duration validation may fail.")
+    except Exception as e:
+        print(f"  ⚠️  Error checking ffprobe: {e}")
+    
+    return True
+
 def main():
     """Main function."""
     parser = argparse.ArgumentParser(description="Download Specific Football Event Videos")
@@ -296,14 +403,25 @@ def main():
                        help="Include M3U8 stream content")
     parser.add_argument("--output_metadata", type=str, default="dataset_metadata.json",
                        help="Output metadata file")
+    parser.add_argument("--prefer-mp4", action="store_true", default=False,
+                       help="Prefer MP4 format (requires ffmpeg)")
+    parser.add_argument("--no-prefer-mp4", dest="prefer_mp4", action="store_false",
+                       help="Don't force MP4 format")
     
     args = parser.parse_args()
+    
+    # Check dependencies
+    if not check_dependencies():
+        print("\n❌ Dependency check failed. Please install missing dependencies.")
+        sys.exit(1)
+    
+    print("")  # Empty line for readability
     
     # Create downloader
     downloader = SpecificFootballEventDownloader(args.download_dir)
     
     # Download videos for all events
-    results = downloader.download_all_events(args.max_videos_per_event)
+    results = downloader.download_all_events(args.max_videos_per_event, prefer_mp4=args.prefer_mp4)
     
     # Download M3U8 content if requested
     if args.include_m3u8:
