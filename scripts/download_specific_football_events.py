@@ -24,81 +24,81 @@ class SpecificFootballEventDownloader:
         self.event_classes = {
             "penalty_shot": {
                 "search_terms": [
-                    "football penalty kick compilation",
-                    "penalty shootout moments",
-                    "penalty kick goals saves",
-                    "penalty kick highlights",
-                    "penalty kick misses saves"
+                    "football penalty kick full video",
+                    "penalty shootout full moments",
+                    "complete penalty kick highlights",
+                    "penalty shootout compilation HD",
+                    "best penalty kicks full"
                 ],
                 "duration_range": "90-180"  # 90 seconds to 3 minutes
             },
             "goal": {
                 "search_terms": [
-                    "football goal compilation",
-                    "amazing goals compilation",
-                    "best goals of the season",
-                    "football goal highlights",
-                    "soccer goal moments"
+                    "football goal compilation full",
+                    "amazing goals compilation HD",
+                    "best goals of the season highlights",
+                    "football goal compilation 2024",
+                    "soccer goals compilation full video"
                 ],
                 "duration_range": "90-180"
             },
             "goal_line_event": {
                 "search_terms": [
-                    "goal line technology moments",
-                    "football goal line decisions",
-                    "goal line controversy",
-                    "goal line clearance",
-                    "goal line technology VAR"
+                    "goal line technology full moments",
+                    "football goal line decisions compilation",
+                    "goal line technology controversy full",
+                    "goal line clearance highlights",
+                    "goal line technology VAR full"
                 ],
                 "duration_range": "90-180"
             },
             "woodworks": {
                 "search_terms": [
-                    "football crossbar hits",
-                    "goalpost hits compilation",
-                    "woodwork moments football",
-                    "crossbar challenge",
-                    "unlucky shots crossbar"
+                    "football crossbar hits compilation",
+                    "goalpost hits full video",
+                    "woodwork moments football full",
+                    "crossbar compilation HD",
+                    "unlucky shots crossbar full"
                 ],
                 "duration_range": "90-180"
             },
             "shot_on_target": {
                 "search_terms": [
-                    "goalkeeper saves compilation",
-                    "shot on target saves",
-                    "amazing saves football",
-                    "goalkeeper saves highlights",
-                    "shot saved by goalkeeper"
+                    "goalkeeper saves compilation full",
+                    "shot on target saves highlights",
+                    "amazing saves football compilation",
+                    "goalkeeper saves compilation 2024",
+                    "best saves compilation full video"
                 ],
                 "duration_range": "90-180"
             },
             "red_card": {
                 "search_terms": [
-                    "football red card moments",
-                    "red card incidents compilation",
-                    "football red card fouls",
-                    "red card referee decisions",
-                    "football red card controversies"
+                    "football red card moments compilation",
+                    "red card incidents full video",
+                    "football red card compilation HD",
+                    "red card referee decisions highlights",
+                    "worst red cards compilation"
                 ],
                 "duration_range": "90-180"
             },
             "yellow_card": {
                 "search_terms": [
-                    "football yellow card moments",
-                    "yellow card compilation",
-                    "football yellow card fouls",
-                    "yellow card referee decisions",
-                    "football yellow card incidents"
+                    "football yellow card moments compilation",
+                    "yellow card incidents full video",
+                    "football yellow card compilation",
+                    "yellow card decisions highlights",
+                    "funny yellow cards compilation"
                 ],
                 "duration_range": "90-180"
             },
             "hat_trick": {
                 "search_terms": [
-                    "football hat trick moments",
-                    "hat trick goals compilation",
-                    "player hat trick highlights",
-                    "hat trick third goal",
-                    "football hat trick celebrations"
+                    "football hat trick compilation full",
+                    "hat trick goals highlights HD",
+                    "player hat trick compilation",
+                    "complete hat trick moments",
+                    "best hat tricks compilation 2024"
                 ],
                 "duration_range": "90-180"
             }
@@ -173,7 +173,7 @@ class SpecificFootballEventDownloader:
                 print(f"    [DEBUG] Output directory exists: {event_dir.exists()}")
                 print(f"    [DEBUG] Files before download: {list(event_dir.glob('*'))}")
                 
-                result = subprocess.run(cmd, capture_output=True, text=True)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
                 
                 print(f"    [DEBUG] Return code: {result.returncode}")
                 print(f"    [DEBUG] STDOUT length: {len(result.stdout)} chars")
@@ -181,8 +181,13 @@ class SpecificFootballEventDownloader:
                 
                 if result.stdout:
                     print(f"    [DEBUG] STDOUT:\n{result.stdout[-1000:]}")  # Last 1000 chars
+                    if "does not pass filter" in result.stdout:
+                        print(f"    ⚠️  WARNING: Videos being filtered due to duration. Consider using --no-duration-filter")
                 if result.stderr:
                     print(f"    [DEBUG] STDERR:\n{result.stderr[-1000:]}")  # Last 1000 chars
+                    if "Sign in to confirm you're not a bot" in result.stderr:
+                        print(f"    ⚠️  WARNING: YouTube bot detection triggered!")
+                        print(f"    💡 TIP: Use --no-duration-filter to allow shorter videos and reduce bot detection")
                 
                 print(f"    [DEBUG] Files after download: {list(event_dir.glob('*'))}")
                 
@@ -206,8 +211,10 @@ class SpecificFootballEventDownloader:
                             file_size = video_file.stat().st_size
                             print(f"    ✅ Downloaded: {video_file.name} ({file_size / 1024 / 1024:.2f} MB, {ext.replace('*.', '')})")
                 
-                # Add delay between searches to avoid rate limiting
-                time.sleep(2)
+                # Add delay between searches to avoid rate limiting and bot detection
+                delay = 5 if i < len(search_terms) - 1 else 2
+                print(f"    [DEBUG] Waiting {delay}s before next search...")
+                time.sleep(delay)
                 
             except Exception as e:
                 print(f"    ❌ Download failed: {e}")
