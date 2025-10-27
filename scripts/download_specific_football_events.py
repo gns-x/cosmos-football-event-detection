@@ -24,8 +24,8 @@ class SpecificFootballEventDownloader:
         self.event_classes = {
             "penalty_shot": {
                 "search_terms": [
-                    "penalty kick 2024",
-                    "penalty shootout 2024",
+                    "penalty kick",
+                    "penalty shootout",
                     "penalty save",
                     "penalty goal",
                     "penalty miss"
@@ -34,10 +34,10 @@ class SpecificFootballEventDownloader:
             },
             "goal": {
                 "search_terms": [
-                    "football goal 2024",
-                    "amazing goals 2024",
+                    "football goal",
+                    "amazing goals",
                     "premier league goals",
-                    "football goal highlights 2024",
+                    "football goal highlights",
                     "best football goals"
                 ],
                 "duration_range": "90-180"
