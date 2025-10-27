@@ -6,9 +6,11 @@
 
 set -e
 
-# Configuration
-RAW_VIDEOS_DIR="../01_data_collection/raw_videos"
-PROCESSED_VIDEOS_DIR="../02_preprocessing/processed_videos"
+# Configuration - Use absolute paths based on script location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+RAW_VIDEOS_DIR="$PROJECT_ROOT/01_data_collection/raw_videos"
+PROCESSED_VIDEOS_DIR="$PROJECT_ROOT/02_preprocessing/processed_videos"
 TARGET_FPS=4
 TARGET_RESOLUTION="720x480"
 VIDEO_CODEC="libx264"
@@ -236,6 +238,8 @@ validate_videos() {
 # Main execution
 main() {
     echo "🚀 Starting Football Video Preprocessing (Updated for Azure A100)"
+    echo "📁 Script directory: $SCRIPT_DIR"
+    echo "📁 Project root: $PROJECT_ROOT"
     echo "📁 Raw videos directory: $RAW_VIDEOS_DIR"
     echo "📁 Processed videos directory: $PROCESSED_VIDEOS_DIR"
     echo "🎯 Target FPS: $TARGET_FPS"
@@ -248,6 +252,16 @@ main() {
         echo "💡 Run the download script first: make download-videos"
         exit 1
     fi
+    
+    # Debug: List directories in raw_videos
+    echo "🔍 Checking for videos in subdirectories..."
+    for class_dir in "$RAW_VIDEOS_DIR"/*; do
+        if [ -d "$class_dir" ]; then
+            local count=$(find "$class_dir" -name "*.mp4" 2>/dev/null | wc -l)
+            echo "  $(basename "$class_dir"): $count videos"
+        fi
+    done
+    echo ""
     
     # Clean up incomplete downloads
     cleanup_incomplete_downloads
