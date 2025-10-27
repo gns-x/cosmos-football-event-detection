@@ -129,12 +129,17 @@ class SpecificFootballEventDownloader:
                     "--match-filter", f"duration > 30 & duration < 300",
                     "-o", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
                     "--write-info-json",
-                    f"ytsearch{max_videos - len(downloaded_videos)}:{search_term}",
-                    "-q"  # Quiet mode
+                    "--verbose",  # Add verbose output for debugging
+                    f"ytsearch{max_videos - len(downloaded_videos)}:{search_term}"
                 ]
                 
                 print(f"    ⬇️  Downloading...")
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+                
+                # Debug output
+                if result.returncode != 0:
+                    print(f"    ❌ yt-dlp failed (exit code {result.returncode})")
+                    print(f"    📋 Error: {result.stderr[:200]}...")
                 
                 # Find downloaded videos
                 count_before = len(downloaded_videos)
@@ -145,6 +150,24 @@ class SpecificFootballEventDownloader:
                 
                 if len(downloaded_videos) == count_before:
                     print(f"    ⚠️  No new videos downloaded")
+                    # Try alternative search without year restrictions
+                    if "2024" in search_term:
+                        alt_term = search_term.replace("2024", "").strip()
+                        print(f"    🔄 Trying alternative: {alt_term}")
+                        cmd_alt = [
+                            "yt-dlp",
+                            "-f", "best[height<=720]",
+                            "-o", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
+                            "--write-info-json",
+                            f"ytsearch1:{alt_term}"
+                        ]
+                        subprocess.run(cmd_alt, capture_output=True, text=True, timeout=60)
+                        
+                        # Check again
+                        for video_file in event_dir.glob(f"{event_name}_*.mp4"):
+                            if video_file.is_file() and video_file not in downloaded_videos:
+                                downloaded_videos.append(video_file)
+                                print(f"    ✅ Downloaded (alt): {video_file.name}")
                 
                 # Add delay between searches to avoid rate limiting
                 time.sleep(2)
