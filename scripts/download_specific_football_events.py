@@ -112,9 +112,10 @@ class SpecificFootballEventDownloader:
         except (FileNotFoundError, Exception):
             return False
     
-    def download_videos_for_event(self, event_name: str, event_info: Dict, max_videos: int = 8, prefer_mp4: bool = True) -> List[Path]:
+    def download_videos_for_event(self, event_name: str, event_info: Dict, max_videos: int = 8, prefer_mp4: bool = True, min_duration: int = 0, max_duration: int = 600) -> List[Path]:
         """Download videos for a specific event class."""
         print(f"🎯 Downloading {event_name.replace('_', ' ').title()} videos...")
+        print(f"    [DEBUG] Duration filter: {min_duration}s - {max_duration}s")
         
         event_dir = self.download_dir / event_name
         event_dir.mkdir(exist_ok=True)
@@ -148,18 +149,25 @@ class SpecificFootballEventDownloader:
                     output_template = f"{event_name}_%(title)s.%(ext)s"
                     print(f"    [DEBUG] Using format without ffmpeg remuxing: {format_spec}")
                 
+                # Build command with optional duration filter
                 cmd = [
                     "yt-dlp",
                     "--max-downloads", str(max_videos - len(downloaded_videos)),
                     "--format", format_spec,
-                    "--match-filter", f"duration > 30 & duration < 300",  # 30 seconds to 5 minutes (more flexible)
                     "--output", str(event_dir / output_template),
                     "--write-info-json",
                     "--write-thumbnail",
                     "--ignore-errors",  # Continue on individual video errors
                     "-v",  # Verbose logging
-                    f"ytsearch10:{search_term}"
                 ]
+                
+                # Add duration filter only if specified
+                if min_duration > 0 or max_duration < 600:
+                    cmd.extend(["--match-filter", f"duration > {min_duration} & duration < {max_duration}"])
+                    print(f"    [DEBUG] Duration filter: {min_duration}s - {max_duration}s")
+                
+                # Add search term
+                cmd.append(f"ytsearch10:{search_term}")
                 
                 print(f"    [DEBUG] Executing command: {' '.join(cmd)}")
                 print(f"    [DEBUG] Output directory exists: {event_dir.exists()}")
@@ -240,7 +248,7 @@ class SpecificFootballEventDownloader:
             print(f"❌ M3U8 error: {e}")
             return None
     
-    def download_all_events(self, max_videos_per_event: int = 8, prefer_mp4: bool = True) -> Dict[str, List[Path]]:
+    def download_all_events(self, max_videos_per_event: int = 8, prefer_mp4: bool = True, min_duration: int = 0, max_duration: int = 600) -> Dict[str, List[Path]]:
         """Download videos for all 8 event classes."""
         print("🚀 Downloading Specific Football Event Videos")
         print("=" * 60)
@@ -255,7 +263,7 @@ class SpecificFootballEventDownloader:
             print(f"\n📁 Processing: {event_name.replace('_', ' ').title()}")
             
             # Download videos for this event
-            downloaded_videos = self.download_videos_for_event(event_name, event_info, max_videos_per_event, prefer_mp4)
+            downloaded_videos = self.download_videos_for_event(event_name, event_info, max_videos_per_event, prefer_mp4, min_duration, max_duration)
             results[event_name] = downloaded_videos
             
             print(f"  ✅ {event_name.replace('_', ' ').title()}: {len(downloaded_videos)} videos downloaded")
@@ -407,6 +415,12 @@ def main():
                        help="Prefer MP4 format (requires ffmpeg)")
     parser.add_argument("--no-prefer-mp4", dest="prefer_mp4", action="store_false",
                        help="Don't force MP4 format")
+    parser.add_argument("--min-duration", type=int, default=0,
+                       help="Minimum video duration in seconds (0 to disable)")
+    parser.add_argument("--max-duration", type=int, default=600,
+                       help="Maximum video duration in seconds (default: 600)")
+    parser.add_argument("--no-duration-filter", action="store_true",
+                       help="Disable duration filtering (download any duration)")
     
     args = parser.parse_args()
     
@@ -417,11 +431,27 @@ def main():
     
     print("")  # Empty line for readability
     
+    # Handle duration filter
+    if args.no_duration_filter:
+        min_duration = 0
+        max_duration = 600
+    else:
+        min_duration = args.min_duration
+        max_duration = args.max_duration
+    
+    print(f"📊 Download settings:")
+    print(f"   Max videos per event: {args.max_videos_per_event}")
+    print(f"   Duration filter: {min_duration}s - {max_duration}s")
+    if args.no_duration_filter:
+        print(f"   ⚠️  Duration filtering disabled (any duration)")
+    print("")
+    
     # Create downloader
     downloader = SpecificFootballEventDownloader(args.download_dir)
     
     # Download videos for all events
-    results = downloader.download_all_events(args.max_videos_per_event, prefer_mp4=args.prefer_mp4)
+    results = downloader.download_all_events(args.max_videos_per_event, prefer_mp4=args.prefer_mp4, 
+                                            min_duration=min_duration, max_duration=max_duration)
     
     # Download M3U8 content if requested
     if args.include_m3u8:
