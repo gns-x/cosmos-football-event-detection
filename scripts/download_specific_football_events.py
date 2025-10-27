@@ -125,15 +125,16 @@ class SpecificFootballEventDownloader:
                 # Download videos using yt-dlp
                 cmd = [
                     "yt-dlp",
-                    "-f", "bestvideo[height<=720]+bestaudio/best[height<=720]",
+                    "-f", "best",  # Use best quality available
+                    "--format-sort", "res:720",  # Prefer 720p
                     "--no-playlist",
                     "--match-filter", "duration > 30 & duration < 300",
                     "-o", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
                     "--write-info-json",
-                    "--quiet",
-                    "--no-warnings",
-                    "--extractor-args", "youtube:player_client=android",
-                    "--user-agent", "Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36",
+                    "--extractor-args", "youtube:player_client=android,webm",  # Use Android webm client
+                    "--user-agent", "com.google.android.youtube/19.09.37 (Linux; U; Android 11; GB) gzip",
+                    "--extractor-retries", "3",
+                    "--fragment-retries", "10",
                     f"ytsearch{max_videos - len(downloaded_videos)}:{search_term}"
                 ]
                 
@@ -148,12 +149,19 @@ class SpecificFootballEventDownloader:
                 else:
                     print(f"    ✅ yt-dlp succeeded")
                 
-                # Find downloaded videos
+                # Find downloaded videos - check all video files
                 count_before = len(downloaded_videos)
-                for video_file in event_dir.glob(f"{event_name}_*.mp4"):
-                    if video_file.is_file() and video_file not in downloaded_videos:
+                # Check for any video files, not just .mp4
+                for video_file in event_dir.glob("*.*"):
+                    if video_file.is_file() and video_file not in downloaded_videos and video_file.suffix in ['.mp4', '.webm', '.mkv']:
                         downloaded_videos.append(video_file)
                         print(f"    ✅ Downloaded: {video_file.name}")
+                
+                # Also check directory contents for debugging
+                if len(downloaded_videos) == count_before:
+                    existing_files = list(event_dir.glob("*"))
+                    if existing_files:
+                        print(f"    📁 Found files in directory: {[f.name for f in existing_files]}")
                 
                 if len(downloaded_videos) == count_before:
                     print(f"    ⚠️  No new videos downloaded")
