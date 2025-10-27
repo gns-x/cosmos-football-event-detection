@@ -118,13 +118,11 @@ download-videos:
 	@echo "  7. Yellow Card"
 	@echo "  8. Hat-Trick"
 	@echo ""
-	@echo "🔧 Activating environment..."
-	@source cosmos-env/bin/activate && \
-	echo "📦 Installing yt-dlp if not present..." && \
-	pip install yt-dlp && \
-	echo "📹 Starting video download..." && \
-	python scripts/download_specific_football_events.py --max_videos_per_event 5 --include_m3u8 && \
-	echo "✅ Video download completed!"
+	@echo "📦 Installing yt-dlp if not present..."
+	@pip install yt-dlp || echo "⚠️  yt-dlp installation failed"
+	@echo "📹 Starting video download..."
+	@python scripts/download_specific_football_events.py --max_videos_per_event 3
+	@echo "✅ Video download completed!"
 	@echo ""
 	@echo "📊 Download Summary:"
 	@echo "  📁 Videos: 01_data_collection/raw_videos/"

@@ -122,22 +122,20 @@ class SpecificFootballEventDownloader:
             print(f"  🔍 Search {i+1}/{len(search_terms)}: {search_term}")
             
             try:
-                # Download videos using yt-dlp with flexible duration filter
+                # Download videos using yt-dlp
                 cmd = [
                     "yt-dlp",
-                    "--max-downloads", str(max_videos - len(downloaded_videos)),
-                    "--format", "best[height<=720]",
-                    "--match-filter", f"duration > 30 & duration < 300",  # 30 seconds to 5 minutes (more flexible)
-                    "--output", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
+                    "-f", "bestvideo[height<=720]+bestaudio/best[height<=720]",
+                    "--match-filter", f"duration > 30 & duration < 300",
+                    "-o", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
                     "--write-info-json",
-                    "--write-thumbnail",
-                    "--ignore-errors",  # Continue on individual video errors
-                    f"ytsearch10:{search_term}"
+                    f"ytsearch{max_videos - len(downloaded_videos)}:{search_term}"
                 ]
                 
-                result = subprocess.run(cmd, capture_output=True, text=True)
+                print(f"    ⬇️  Downloading...")
+                subprocess.run(cmd, capture_output=True, text=True)
                 
-                # Find downloaded videos (even if some failed)
+                # Find downloaded videos
                 for video_file in event_dir.glob(f"{event_name}_*.mp4"):
                     if video_file.is_file() and video_file not in downloaded_videos:
                         downloaded_videos.append(video_file)
