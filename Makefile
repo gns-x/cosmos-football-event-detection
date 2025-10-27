@@ -119,9 +119,9 @@ download-videos:
 	@echo "  8. Hat-Trick"
 	@echo ""
 	@echo "📦 Installing yt-dlp if not present..."
-	@pip install yt-dlp || echo "⚠️  yt-dlp installation failed"
+	@pip install -U yt-dlp || echo "⚠️  yt-dlp installation failed"
 	@echo "📹 Starting video download..."
-	@python scripts/download_specific_football_events.py --max_videos_per_event 3
+	@python scripts/download_specific_football_events.py --max_videos_per_event 2
 	@echo "✅ Video download completed!"
 	@echo ""
 	@echo "📊 Download Summary:"

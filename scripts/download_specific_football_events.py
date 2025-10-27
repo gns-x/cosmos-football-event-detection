@@ -125,13 +125,15 @@ class SpecificFootballEventDownloader:
                 # Download videos using yt-dlp
                 cmd = [
                     "yt-dlp",
-                    "-f", "best[height<=720]",
-                    "--match-filter", f"duration > 30 & duration < 300",
+                    "-f", "bestvideo[height<=720]+bestaudio/best[height<=720]",
+                    "--no-playlist",
+                    "--match-filter", "duration > 30 & duration < 300",
                     "-o", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
                     "--write-info-json",
-                    "--verbose",  # Add verbose output for debugging
+                    "--no-warnings",
+                    "--extractor-args", "youtube:player_client=android",  # Use Android client to bypass restrictions
                     f"ytsearch{max_videos - len(downloaded_videos)}:{search_term}"
-                ]
+负数       ]
                 
                 print(f"    ⬇️  Downloading...")
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
@@ -139,7 +141,9 @@ class SpecificFootballEventDownloader:
                 # Debug output
                 if result.returncode != 0:
                     print(f"    ❌ yt-dlp failed (exit code {result.returncode})")
-                    print(f"    📋 Error: {result.stderr[:200]}...")
+                    # Only show error if it's not about no matches
+                    if "No matching results" not in result.stderr:
+                        print(f"    📋 Error: {result.stderr[:150]}")
                 
                 # Find downloaded videos
                 count_before = len(downloaded_videos)
