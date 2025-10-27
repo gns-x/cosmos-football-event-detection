@@ -24,21 +24,21 @@ class SpecificFootballEventDownloader:
         self.event_classes = {
             "penalty_shot": {
                 "search_terms": [
-                    "football penalty kick compilation",
-                    "penalty shootout moments",
-                    "penalty kick goals saves",
-                    "penalty kick highlights",
-                    "penalty kick misses saves"
+                    "penalty kick 2024",
+                    "penalty shootout 2024",
+                    "penalty save",
+                    "penalty goal",
+                    "penalty miss"
                 ],
                 "duration_range": "90-180"  # 90 seconds to 3 minutes
             },
             "goal": {
                 "search_terms": [
-                    "football goal compilation",
-                    "amazing goals compilation",
-                    "best goals of the season",
-                    "football goal highlights",
-                    "soccer goal moments"
+                    "football goal 2024",
+                    "amazing goals 2024",
+                    "premier league goals",
+                    "football goal highlights 2024",
+                    "best football goals"
                 ],
                 "duration_range": "90-180"
             },
@@ -125,21 +125,26 @@ class SpecificFootballEventDownloader:
                 # Download videos using yt-dlp
                 cmd = [
                     "yt-dlp",
-                    "-f", "bestvideo[height<=720]+bestaudio/best[height<=720]",
+                    "-f", "best[height<=720]",
                     "--match-filter", f"duration > 30 & duration < 300",
                     "-o", str(event_dir / f"{event_name}_%(title)s.%(ext)s"),
                     "--write-info-json",
-                    f"ytsearch{max_videos - len(downloaded_videos)}:{search_term}"
+                    f"ytsearch{max_videos - len(downloaded_videos)}:{search_term}",
+                    "-q"  # Quiet mode
                 ]
                 
                 print(f"    ⬇️  Downloading...")
-                subprocess.run(cmd, capture_output=True, text=True)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
                 
                 # Find downloaded videos
+                count_before = len(downloaded_videos)
                 for video_file in event_dir.glob(f"{event_name}_*.mp4"):
                     if video_file.is_file() and video_file not in downloaded_videos:
                         downloaded_videos.append(video_file)
                         print(f"    ✅ Downloaded: {video_file.name}")
+                
+                if len(downloaded_videos) == count_before:
+                    print(f"    ⚠️  No new videos downloaded")
                 
                 # Add delay between searches to avoid rate limiting
                 time.sleep(2)

@@ -3,7 +3,7 @@
     "name": "Football Event Classification Dataset",
     "description": "Videos for 8 specific football event classes",
     "total_classes": 8,
-    "created_date": "2025-10-27 14:36:11",
+    "created_date": "2025-10-27 19:06:16",
     "duration_requirement": "90-180 seconds"
   },
   "event_classes": [
@@ -17,14 +17,14 @@
     "hat_trick"
   ],
   "video_counts": {
-    "goal_line_event": 3,
-    "hat_trick": 3,
-    "yellow_card": 3,
-    "shot_on_target": 3,
-    "woodworks": 3,
-    "penalty_shot": 3,
-    "red_card": 3,
-    "goal": 3
+    "goal_line_event": 2,
+    "hat_trick": 2,
+    "yellow_card": 1,
+    "shot_on_target": 1,
+    "woodworks": 2,
+    "penalty_shot": 1,
+    "red_card": 1,
+    "goal": 1
   },
   "data_format": {
     "input": "video file path",
