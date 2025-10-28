@@ -168,6 +168,8 @@ class PredictionGenerator:
         if resolved_path is None:
             print(f"  ⚠️  Video not found: {video_path}")
             print(f"  🔍 Tried paths: {[str(p) for p in possible_paths]}")
+            print(f"  📁 Current working directory: {Path.cwd()}")
+            print(f"  📁 Test file location: {self.test_file}")
             return {
                 "video": video_path,
                 "error": "Video file not found"
