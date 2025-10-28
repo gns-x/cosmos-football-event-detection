@@ -3,7 +3,7 @@
 
 SHELL := /bin/bash
 
-.PHONY: help setup install test train evaluate inference clean deploy status download-videos clean-videos annotation-app clean-delivery preprocess
+.PHONY: help setup install test train evaluate inference clean deploy status download-videos clean-videos annotation-app clean-delivery preprocess fix-deps
 
 # Default target
 help:
@@ -14,6 +14,7 @@ help:
 	@echo "  make deploy         - Complete automated setup from fresh delivery"
 	@echo "  make setup          - Complete Azure VM setup and environment"
 	@echo "  make install        - Install all dependencies and requirements"
+	@echo "  make fix-deps       - Fix deprecated package warnings"
 	@echo "  make download-videos - Download football videos for 8 event classes"
 	@echo "  make preprocess     - Preprocess videos to 4 FPS"
 	@echo "  make annotation-app - Start the video annotation web app"
@@ -103,6 +104,21 @@ install:
 	@source cosmos-env/bin/activate && python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
 	@source cosmos-env/bin/activate && python -c "import torch; print(f'GPU count: {torch.cuda.device_count()}')"
 	@echo "✅ Installation verification completed!"
+
+# Fix deprecated package warnings
+fix-deps:
+	@echo "🔧 Fixing Deprecated Package Warnings"
+	@echo "=================================================================="
+	@echo "📦 Updating deprecated packages to modern alternatives..."
+	@bash scripts/fix_deprecated_packages.sh
+	@echo ""
+	@echo "✅ Deprecated package warnings fixed!"
+	@echo "📊 Updated packages:"
+	@echo "  - nvidia-ml-py (replaces pynvml)"
+	@echo "  - torchcodec (modern video processing)"
+	@echo "  - transformers (latest version)"
+	@echo "  - torchvision (latest version)"
+	@echo "  - av, opencv-python-headless (video processing)"
 
 # Download football videos for 8 event classes
 download-videos:
