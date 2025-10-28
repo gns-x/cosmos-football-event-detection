@@ -333,15 +333,28 @@ class FootballVideoEvaluator:
         # Load predictions from generated predictions file or create them using the model
         predictions = self._load_or_generate_predictions()
         
-        # Run evaluations
-        event_metrics = self.evaluate_event_classification(predictions, self.test_data)
-        temporal_metrics = self.evaluate_temporal_accuracy(predictions, self.test_data)
-        description_metrics = self.evaluate_description_quality(predictions, self.test_data)
+        # Filter out predictions with errors (missing videos) and corresponding test data
+        valid_predictions = []
+        valid_test_data = []
+        
+        for pred, test_item in zip(predictions, self.test_data):
+            if "error" not in pred:
+                valid_predictions.append(pred)
+                valid_test_data.append(test_item)
+        
+        print(f"📊 Valid predictions: {len(valid_predictions)}/{len(predictions)}")
+        
+        # Run evaluations only on valid predictions
+        event_metrics = self.evaluate_event_classification(valid_predictions, valid_test_data)
+        temporal_metrics = self.evaluate_temporal_accuracy(valid_predictions, valid_test_data)
+        description_metrics = self.evaluate_description_quality(valid_predictions, valid_test_data)
         
         # Compile results
         results = {
             "evaluation_timestamp": datetime.now().isoformat(),
             "test_set_size": len(self.test_data),
+            "valid_predictions": len(valid_predictions),
+            "missing_videos": len(predictions) - len(valid_predictions),
             "event_classification": event_metrics,
             "temporal_accuracy": temporal_metrics,
             "description_quality": description_metrics,
@@ -411,6 +424,16 @@ class FootballVideoEvaluator:
         print("\n" + "=" * 70)
         print("📊 FOOTBALL VIDEO ANALYSIS EVALUATION REPORT")
         print("=" * 70)
+        
+        # Dataset Information
+        test_set_size = results.get("test_set_size", 0)
+        valid_predictions = results.get("valid_predictions", 0)
+        missing_videos = results.get("missing_videos", 0)
+        
+        print(f"\n📊 DATASET SUMMARY:")
+        print(f"  Total test items: {test_set_size}")
+        print(f"  Valid predictions: {valid_predictions}")
+        print(f"  Missing videos: {missing_videos}")
         
         # Overall Score
         overall_score = results.get("overall_score", 0.0)

@@ -161,20 +161,17 @@ class PredictionGenerator:
         ]
         
         resolved_path = None
-        for i, path in enumerate(possible_paths):
+        for path in possible_paths:
             if path.exists():
                 resolved_path = path
-                print(f"  ✅ Found video at path {i}: {path}")
                 break
-            else:
-                print(f"  ❌ Path {i} not found: {path}")
         
         if resolved_path is None:
             print(f"  ⚠️  Video not found: {video_path}")
-            print(f"  📁 Current working directory: {Path.cwd()}")
             return {
                 "video": video_path,
-                "error": "Video file not found"
+                "error": "Video file not found",
+                "events": []  # Return empty events array for missing videos
             }
         
         print(f"🎬 Processing: {video_name}")
