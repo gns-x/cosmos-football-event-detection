@@ -147,17 +147,31 @@ class PredictionGenerator:
         video_path = test_item.get("video", "unknown_video.mp4")
         video_name = Path(video_path).name
         
-        # Resolve video path
+        # Resolve video path - try multiple locations
         resolved_path = Path(video_path)
-        if not resolved_path.exists():
-            # Try relative to test file directory
-            resolved_path = self.test_file.parent.parent / video_path
-            if not resolved_path.exists():
-                print(f"  ⚠️  Video not found: {video_path}")
-                return {
-                    "video": video_path,
-                    "error": "Video file not found"
-                }
+        
+        # Try different path resolution strategies
+        possible_paths = [
+            resolved_path,  # Direct path
+            Path("../") / video_path,  # Relative to evaluation directory (06_evaluation)
+            Path("../../") / video_path,  # Relative to project root
+            Path.cwd() / video_path,  # Relative to current working directory
+            Path(video_path).resolve()  # Absolute path
+        ]
+        
+        resolved_path = None
+        for path in possible_paths:
+            if path.exists():
+                resolved_path = path
+                break
+        
+        if resolved_path is None:
+            print(f"  ⚠️  Video not found: {video_path}")
+            print(f"  🔍 Tried paths: {[str(p) for p in possible_paths]}")
+            return {
+                "video": video_path,
+                "error": "Video file not found"
+            }
         
         print(f"🎬 Processing: {video_name}")
         
