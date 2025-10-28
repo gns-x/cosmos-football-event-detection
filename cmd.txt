@@ -1,1 +1,0 @@
-cd backend && python3 -m venv cosmos-local-env && source cosmos-local-env/bin/activate && pip install -r requirements_local.txt && python -c "from transformers import AutoTokenizer, AutoModelForCausalLM; AutoTokenizer.from_pretrained('nvidia/Cosmos-Reason1-7B', trust_remote_code=True); AutoModelForCausalLM.from_pretrained('nvidia/Cosmos-Reason1-7B', trust_remote_code=True)"
