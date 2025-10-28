@@ -1,0 +1,204 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --nvidia-green: #76B900;
+  --nvidia-dark-bg: #0D1117;
+  --nvidia-card-bg: #161B22;
+  --nvidia-card-border: #30363D;
+  --nvidia-text-primary: #F0F6FC;
+  --nvidia-text-secondary: #8B949E;
+  --nvidia-accent: #58A6FF;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: var(--nvidia-dark-bg);
+  color: var(--nvidia-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+/* NVIDIA Card Styles */
+.nvidia-card {
+  background-color: var(--nvidia-card-bg);
+  border: 1px solid var(--nvidia-card-border);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  padding: 24px;
+}
+
+.nvidia-card-header {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--nvidia-text-primary);
+  margin-bottom: 16px;
+}
+
+.nvidia-input {
+  background-color: var(--nvidia-card-bg);
+  border: 1px solid var(--nvidia-card-border);
+  border-radius: 6px;
+  padding: 12px;
+  color: var(--nvidia-text-primary);
+  font-size: 14px;
+  width: 100%;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.nvidia-input:focus {
+  outline: none;
+  border-color: var(--nvidia-green);
+  box-shadow: 0 0 0 2px rgba(118, 185, 0, 0.2);
+}
+
+.nvidia-button {
+  background-color: var(--nvidia-green);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nvidia-button:hover {
+  background-color: #6BA500;
+  transform: translateY(-1px);
+}
+
+.nvidia-button:active {
+  transform: translateY(0);
+}
+
+.nvidia-tab {
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  color: var(--nvidia-text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.nvidia-tab.active {
+  color: var(--nvidia-text-primary);
+  border-bottom-color: var(--nvidia-green);
+}
+
+.nvidia-tab:hover {
+  color: var(--nvidia-text-primary);
+}
+
+/* Video Player Styles */
+.video-player {
+  background-color: var(--nvidia-card-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.video-timeline {
+  height: 4px;
+  background-color: var(--nvidia-card-border);
+  border-radius: 2px;
+  margin: 16px 0;
+  position: relative;
+}
+
+.video-progress {
+  height: 100%;
+  background-color: var(--nvidia-green);
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.1s ease;
+}
+
+.video-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+}
+
+.play-button {
+  background-color: var(--nvidia-green);
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.play-button:hover {
+  background-color: #6BA500;
+  transform: scale(1.05);
+}
+
+.time-display {
+  color: var(--nvidia-text-secondary);
+  font-size: 14px;
+  font-family: monospace;
+}
+
+/* Character Counter */
+.char-counter {
+  color: var(--nvidia-text-secondary);
+  font-size: 12px;
+  text-align: right;
+  margin-top: 8px;
+}
+
+/* Responsive Layout */
+@media (max-width: 768px) {
+  .two-column-layout {
+    flex-direction: column;
+  }
+  
+  .video-column {
+    width: 100%;
+    margin-bottom: 24px;
+  }
+  
+  .controls-column {
+    width: 100%;
+  }
+}
