@@ -1,5 +1,5 @@
-# Configuration file for Cosmos fine-tuning
-# Hyperparameters and training settings based on Cosmos-Reason1-7B.md
+# Phase 5: Training Pipeline Smoke Test Configuration
+# Goal: Overfit on single batch to prove model can learn
 
 # Model configuration
 model_name: "Cosmos-Reason1-7B"
@@ -13,30 +13,30 @@ lora_alpha: 32
 lora_dropout: 0.1
 target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
 
-# Training configuration
+# Phase 5 Smoke Test Configuration
 learning_rate: 1e-4
-batch_size: 1
-gradient_accumulation_steps: 4
-epochs: 3
+batch_size: 1                    # Single batch for overfitting
+gradient_accumulation_steps: 1   # No accumulation needed
+epochs: 50                        # High epochs for overfitting
 max_steps: 1000
-warmup_steps: 100
+warmup_steps: 10                  # Minimal warmup
 
 # Data configuration
 train_data_path: "../04_dataset/train.jsonl"
-validation_data_path: "../04_dataset/validation.jsonl"
+validation_data_path: "../04_dataset/validation.jsonl"  # Will be copied from train
 max_length: 2048
 
 # Cosmos-specific video settings
 video_fps: 4
 max_video_frames: 10
 max_image_frames: 10
-input_context_length: 128000  # 128K as per Cosmos-Reason1-7B specs
+input_context_length: 128000
 
 # Output configuration
 output_dir: "./checkpoints"
-save_steps: 500
-eval_steps: 250
-logging_steps: 50
+save_steps: 10                    # Save frequently for smoke test
+eval_steps: 5                     # Evaluate frequently
+logging_steps: 1                  # Log every step
 
 # Hardware configuration
 device_map: "auto"
@@ -44,20 +44,12 @@ torch_dtype: "bfloat16"
 fp16: false
 bf16: true
 
-# Cosmos RL SFT Framework settings
-use_deepspeed: true
-deepspeed_config: "configs/deepspeed_config.json"
-use_ray: true
-ray_config:
-  num_workers: 4
-  resources_per_worker: {"CPU": 2, "GPU": 1}
-
 # Monitoring and logging
-use_wandb: true
+use_wandb: false                  # Disable for smoke test
 wandb_project: "cosmos-football"
 tensorboard_log_dir: "./logs"
 
 # Other settings
 seed: 42
-dataloader_num_workers: 4
+dataloader_num_workers: 0         # Single process for smoke test
 remove_unused_columns: false

@@ -204,6 +204,32 @@ train:
 	@echo "  📈 Logs: 05_training/logs/"
 	@echo "  🎯 LoRA Adapter: Ready for evaluation"
 
+# Phase 5: Training Pipeline Smoke Test
+smoke-test:
+	@echo "🧪 Phase 5: Training Pipeline Smoke Test"
+	@echo "=================================================================="
+	@echo "🎯 Goal: Verify training works and model can overfit"
+	@echo "📊 Method: Train on single batch with high epochs (50)"
+	@echo "✅ Success: Loss drops to ~0.0, LoRA adapter saved"
+	@echo ""
+	@echo "🔧 Activating environment..."
+	@source cosmos-env/bin/activate && \
+		echo "📋 Checking GPU availability..." && \
+		nvidia-smi && \
+		echo "" && \
+		echo "🎯 Starting Phase 5 smoke test..." && \
+		cd 05_training && \
+		echo "📊 Preparing LLaVA format datasets..." && \
+		python ../scripts/prepare_cosmos_training.py && \
+		echo "🚀 Running smoke test training..." && \
+		python fine_tune.py --config config.yaml && \
+		echo "✅ Smoke test completed!"
+	@echo ""
+	@echo "📊 Smoke Test Results:"
+	@echo "  📁 LoRA Adapter: 05_training/checkpoints/football_sft/"
+	@echo "  📈 Expected: train_loss approaching 0.0"
+	@echo "  ✅ Verification: Model can learn from data"
+
 # Run evaluation with trained model
 evaluate:
 	@echo "📊 Running Evaluation with Trained Model"
