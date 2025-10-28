@@ -1,0 +1,20 @@
+{
+  "video": "yellow_card_Craziest Yellow Cards in Football",
+  "event_class": "yellow_card",
+  "annotations": [
+    {
+      "description": "YELLOW CARD event detected",
+      "start_time": "0:19",
+      "end_time": "0:24",
+      "event": "yellow_card"
+    }
+  ],
+  "timestamp": "2025-10-28T10:29:45.573572",
+  "annotator": "user",
+  "data_format": {
+    "description": "Moment description including player, team names and jersey numbers",
+    "start_time": "Start timestamp of the moment",
+    "end_time": "End timestamp of the moment",
+    "event": "Event type (one of the 8 classes)"
+  }
+}

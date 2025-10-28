@@ -1,0 +1,20 @@
+{
+  "video": "goal_line_event_Unlucky Goal Line Technology Moments \ud83d\ude33",
+  "event_class": "goal_line_event",
+  "annotations": [
+    {
+      "description": "GOAL LINE EVENT event detected",
+      "start_time": "0:03",
+      "end_time": "0:08",
+      "event": "goal_line_event"
+    }
+  ],
+  "timestamp": "2025-10-28T10:27:01.855916",
+  "annotator": "user",
+  "data_format": {
+    "description": "Moment description including player, team names and jersey numbers",
+    "start_time": "Start timestamp of the moment",
+    "end_time": "End timestamp of the moment",
+    "event": "Event type (one of the 8 classes)"
+  }
+}

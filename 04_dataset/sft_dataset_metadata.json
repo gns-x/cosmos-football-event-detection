@@ -1,0 +1,21 @@
+{
+  "dataset_name": "Cosmos Football Video SFT Dataset",
+  "version": "1.0.0",
+  "created_date": "2025-10-28T10:36:42.402621",
+  "format": "SFT (Supervised Fine-Tuning)",
+  "splits": {
+    "train": 13,
+    "validation": 4
+  },
+  "classes": [],
+  "total_examples": 17,
+  "sft_format": {
+    "prompt": "Analyze the following football clip. Identify all significant events including goals, cards, and shots. For each event, provide a detailed description including player, team, and jersey info, the event class, and precise start/end timestamps. Output *only* a valid JSON array.",
+    "completion_format": "JSON array of event annotations",
+    "video_specs": {
+      "fps": 4,
+      "max_duration": 30,
+      "resolution": "720x480"
+    }
+  }
+}

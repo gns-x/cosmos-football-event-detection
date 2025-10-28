@@ -1,0 +1,20 @@
+{
+  "video": "penalty_shot_Penalty Kicks That SHOCKED The World",
+  "event_class": "penalty_shot",
+  "annotations": [
+    {
+      "description": "PENALTY SHOT event detected",
+      "start_time": "0:08",
+      "end_time": "0:13",
+      "event": "penalty_shot"
+    }
+  ],
+  "timestamp": "2025-10-28T10:25:04.490995",
+  "annotator": "user",
+  "data_format": {
+    "description": "Moment description including player, team names and jersey numbers",
+    "start_time": "Start timestamp of the moment",
+    "end_time": "End timestamp of the moment",
+    "event": "Event type (one of the 8 classes)"
+  }
+}

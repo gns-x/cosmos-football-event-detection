@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Tuple
 from datetime import datetime
 import argparse
+import re
 
 class SFTDatasetBuilder:
     def __init__(self, project_root: str):
@@ -25,9 +26,46 @@ class SFTDatasetBuilder:
         
         # Ensure dataset directory exists
         self.dataset_dir.mkdir(exist_ok=True)
+
+    def _normalize(self, name: str) -> str:
+        name = name.lower()
+        name = re.sub(r"[_\-]+", " ", name)
+        name = re.sub(r"[^a-z0-9 ]+", "", name)
+        name = re.sub(r"\s+", " ", name).strip()
+        return name
+
+    def _resolve_video_path(self, video_stem: str, event_class: str) -> Tuple[Path, str]:
+        """Find the best matching video file in processed first, else raw. Returns (path, class)."""
+        norm_target = self._normalize(video_stem.replace("_processed", ""))
+        # 1) Search processed
+        proc_class_dir = self.processed_videos_dir / event_class
+        if proc_class_dir.exists():
+            candidates = list(proc_class_dir.glob("*.mp4"))
+            for cand in candidates:
+                stem = cand.stem.replace("_processed", "")
+                if self._normalize(stem) == norm_target:
+                    return cand, event_class
+            # fallback: substring match
+            for cand in candidates:
+                stem = cand.stem.replace("_processed", "")
+                n = self._normalize(stem)
+                if norm_target in n or n in norm_target:
+                    return cand, event_class
+        # 2) Search raw
+        raw_class_dir = self.project_root / "01_data_collection" / "raw_videos" / event_class
+        if raw_class_dir.exists():
+            candidates = list(raw_class_dir.glob("*.mp4"))
+            for cand in candidates:
+                if self._normalize(cand.stem) == norm_target:
+                    return cand, event_class
+            for cand in candidates:
+                n = self._normalize(cand.stem)
+                if norm_target in n or n in norm_target:
+                    return cand, event_class
+        return None, event_class
     
     def load_annotations(self) -> List[Dict[str, Any]]:
-        """Load all annotation files."""
+        """Load and normalize all annotation files to {'video': str, 'annotations': list}."""
         print("📖 Loading ground truth annotations...")
         
         annotations = []
@@ -42,16 +80,30 @@ class SFTDatasetBuilder:
                 with open(annotation_file, 'r') as f:
                     data = json.load(f)
                     
-                    # Handle both formats: direct array or wrapped object
+                    # Normalize both formats into a common structure
                     if isinstance(data, list):
-                        # Direct array format (exact specification)
+                        # Direct array of annotations; infer video name from filename
+                        stem = annotation_file.stem
+                        # Strip trailing _annotations if present
+                        if stem.endswith("_annotations"):
+                            stem = stem[:-12]
                         annotations.append({
-                            "video_file": annotation_file.stem,
+                            "video": stem,
                             "annotations": data
                         })
-                    elif isinstance(data, dict) and "annotations" in data:
-                        # Wrapped format
-                        annotations.append(data)
+                    elif isinstance(data, dict):
+                        ann_list = data.get("annotations") or []
+                        video_name = data.get("video")
+                        if not video_name:
+                            # Fallback to filename
+                            stem = annotation_file.stem
+                            if stem.endswith("_annotations"):
+                                stem = stem[:-12]
+                            video_name = stem
+                        annotations.append({
+                            "video": video_name,
+                            "annotations": ann_list
+                        })
                     else:
                         print(f"  ⚠️  Unknown format in {annotation_file.name}")
                         continue
@@ -124,32 +176,44 @@ class SFTDatasetBuilder:
         return sft_example
     
     def create_dataset_splits(self, annotations: List[Dict[str, Any]], video_files: Dict[str, List[Path]]) -> Tuple[List[Dict], List[Dict]]:
-        """Create train/validation splits for SFT dataset."""
+        """Create train/validation splits for SFT dataset.
+        New strategy: iterate annotations and resolve the corresponding video path in processed/raw.
+        """
         print("📊 Creating SFT dataset splits...")
         
-        # Create mapping of video names to annotations
-        annotation_map = {}
-        for annotation in annotations:
-            video_name = annotation.get('video_file', '')
-            annotation_map[video_name] = annotation.get('annotations', [])
-        
-        # Process ALL videos from video_files
         all_video_items = []
-        for class_name, videos in video_files.items():
-            for video in videos:
-                video_name = video.stem
-                # Try to find matching annotation
-                annotations_for_video = annotation_map.get(video_name, [])
-                
-                # Only include videos that have annotations (NO PLACEHOLDERS)
-                if not annotations_for_video:
-                    print(f"  ⚠️  Skipping {video_name} - no annotation found")
-                    continue
-                
-                all_video_items.append({
-                    'video_path': video,
-                    'annotations': annotations_for_video
-                })
+        for item in annotations:
+            video_name = (item.get('video') or '').strip()
+            ann_list = item.get('annotations', [])
+            if not video_name or not ann_list:
+                continue
+            # Try to infer class from first annotation if not present
+            class_name = None
+            # Some saved files include event_class at top-level; try that first
+            class_name = item.get('event_class')
+            if not class_name and len(ann_list) > 0:
+                ev = (ann_list[0].get('event') or '').strip()
+                if ev:
+                    class_name = ev
+            # Fallback: try to guess from file prefix convention like "goal_..."
+            if not class_name and '_' in video_name:
+                possible = video_name.split('_', 1)[0]
+                if (self.processed_videos_dir / possible).exists():
+                    class_name = possible
+            if not class_name:
+                # Default unknown; skip gracefully
+                print(f"  ⚠️  Could not infer class for {video_name}; skipping")
+                continue
+            
+            video_path, resolved_class = self._resolve_video_path(video_name, class_name)
+            if not video_path:
+                print(f"  ⚠️  Skipping {video_name} - video file not found in processed/raw")
+                continue
+            
+            all_video_items.append({
+                'video_path': video_path,
+                'annotations': ann_list
+            })
         
         # Shuffle all videos
         random.shuffle(all_video_items)

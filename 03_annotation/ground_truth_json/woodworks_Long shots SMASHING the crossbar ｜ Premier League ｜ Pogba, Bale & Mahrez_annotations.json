@@ -1,0 +1,20 @@
+{
+  "video": "woodworks_Long shots SMASHING the crossbar \uff5c Premier League \uff5c Pogba, Bale & Mahrez",
+  "event_class": "woodworks",
+  "annotations": [
+    {
+      "description": "WOODWORKS event detected",
+      "start_time": "0:02",
+      "end_time": "0:07",
+      "event": "woodworks"
+    }
+  ],
+  "timestamp": "2025-10-28T10:27:35.956606",
+  "annotator": "user",
+  "data_format": {
+    "description": "Moment description including player, team names and jersey numbers",
+    "start_time": "Start timestamp of the moment",
+    "end_time": "End timestamp of the moment",
+    "event": "Event type (one of the 8 classes)"
+  }
+}
