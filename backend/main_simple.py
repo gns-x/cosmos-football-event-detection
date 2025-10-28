@@ -11,7 +11,7 @@ import torch  # type: ignore
 from typing import Optional, Dict, Any, List
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException  # type: ignore
 from fastapi.middleware.cors import CORSMiddleware  # type: ignore
-from transformers import AutoTokenizer, AutoModel, AutoProcessor  # type: ignore
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoProcessor  # type: ignore
 from qwen_vl_utils import process_vision_info  # type: ignore
 import uvicorn  # type: ignore
 from dotenv import load_dotenv  # type: ignore
@@ -47,7 +47,7 @@ app.add_middleware(
 )
 
 # Global variables for model and processor
-model: Optional[AutoModel] = None
+model: Optional[AutoModelForCausalLM] = None
 tokenizer: Optional[AutoTokenizer] = None
 processor: Optional[AutoProcessor] = None
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -86,7 +86,7 @@ async def startup_event():
             "low_cpu_mem_usage": True,
         }
         
-        model = AutoModel.from_pretrained(
+        model = AutoModelForCausalLM.from_pretrained(
             MODEL_NAME,
             **model_kwargs
         )
@@ -154,43 +154,23 @@ async def analyze_text(prompt: str = Form(...)) -> Dict[str, Any]:
         inputs = {k: v.to(device) for k, v in inputs.items()}
         
         # Use the actual Cosmos model for real analysis
-        try:
-            # Try to use the model's generate method if available
-            with torch.no_grad():
-                outputs = model.generate(
-                    **inputs,
-                    max_new_tokens=512,
-                    temperature=0.7,
-                    do_sample=True,
-                    pad_token_id=tokenizer.eos_token_id,
-                    eos_token_id=tokenizer.eos_token_id,
-                    repetition_penalty=1.1
-                )
-            
-            # Decode response
-            response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-            
-            # Remove input from response
-            if chat_prompt in response:
-                response = response.replace(chat_prompt, "").strip()
-                
-        except AttributeError:
-            # AutoModel doesn't have generate method, use forward pass
-            try:
-                with torch.no_grad():
-                    # Get model outputs
-                    outputs = model(**inputs)
-                    # Get the last hidden states
-                    last_hidden_states = outputs.last_hidden_state
-                    # Use the last token's hidden state to generate a response
-                    # This is a simplified approach - in practice you'd need a proper generation head
-                    logits = last_hidden_states[:, -1, :]  # Get last token logits
-                    
-                    # Simple response based on the model's understanding
-                    response = f"The Cosmos-Reason1-7B model has analyzed the video content related to: {prompt}. The model detected relevant football events and can provide detailed analysis of the video content including player movements, ball trajectory, and key moments."
-                    
-            except Exception as e:
-                response = f"Cosmos-Reason1-7B model analysis completed. The model processed the video content for: {prompt}. Analysis shows relevant football events and player interactions in the video."
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=512,
+                temperature=0.7,
+                do_sample=True,
+                pad_token_id=tokenizer.eos_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                repetition_penalty=1.1
+            )
+        
+        # Decode response
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        
+        # Remove input from response
+        if chat_prompt in response:
+            response = response.replace(chat_prompt, "").strip()
         
         return {
             "reasoning": [response],
@@ -303,134 +283,81 @@ async def clear_cache() -> Dict[str, str]:
 
 def _generate_multimodal_text(messages: List[Dict[str, Any]]) -> str:
     """Generate text using transformers with multimodal inputs"""
-    try:
-        # Build chat prompt
-        prompt = processor.apply_chat_template(
-            messages, 
-            tokenize=False, 
-            add_generation_prompt=True
+    # Build chat prompt
+    prompt = processor.apply_chat_template(
+        messages, 
+        tokenize=False, 
+        add_generation_prompt=True
+    )
+    
+    # Prepare multimodal inputs
+    image_inputs, video_inputs, video_kwargs = process_vision_info(
+        messages, 
+        return_video_kwargs=True
+    )
+    
+    # Process multimodal inputs with the processor
+    if image_inputs is not None or video_inputs is not None:
+        # Use processor to prepare inputs for multimodal model
+        processed_inputs = processor(
+            text=prompt,
+            images=image_inputs,
+            videos=video_inputs,
+            return_tensors="pt",
+            padding=True,
+            truncation=True
         )
         
-        # Prepare multimodal inputs
-        image_inputs, video_inputs, video_kwargs = process_vision_info(
-            messages, 
-            return_video_kwargs=True
-        )
+        # Move to device
+        processed_inputs = {k: v.to(device) for k, v in processed_inputs.items()}
         
-        # For multimodal analysis, we need to use the processor properly
-        if image_inputs is not None or video_inputs is not None:
-            # Use processor to prepare inputs for multimodal model
-            try:
-                # Process the multimodal inputs
-                processed_inputs = processor(
-                    text=prompt,
-                    images=image_inputs,
-                    videos=video_inputs,
-                    return_tensors="pt",
-                    padding=True,
-                    truncation=True
-                )
-                
-                # Move to device
-                processed_inputs = {k: v.to(device) for k, v in processed_inputs.items()}
-                
-                # Generate with the model
-                with torch.no_grad():
-                    if hasattr(model, 'generate'):
-                        outputs = model.generate(
-                            **processed_inputs,
-                            max_new_tokens=512,
-                            temperature=0.7,
-                            do_sample=True,
-                            pad_token_id=tokenizer.eos_token_id,
-                            eos_token_id=tokenizer.eos_token_id,
-                            repetition_penalty=1.1
-                        )
-                        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-                    else:
-                        # Use forward pass for AutoModel - try to get meaningful output
-                        outputs = model(**processed_inputs)
-                        
-                        # Try to extract meaningful information from the model's hidden states
-                        if hasattr(outputs, 'last_hidden_state'):
-                            # Get the last hidden state
-                            last_hidden = outputs.last_hidden_state
-                            
-                            # Create a more detailed response based on the prompt
-                            prompt_lower = prompt.lower()
-                            
-                            if "goal" in prompt_lower:
-                                response = f"Based on the video analysis, I can identify goal-scoring opportunities and successful attempts. The model detected player movements, ball trajectory, and scoring actions in the video content. Analysis shows tactical play patterns and individual player contributions to goal-scoring situations."
-                            elif "penalty" in prompt_lower:
-                                response = f"The video analysis reveals penalty kick situations with detailed examination of taker technique, goalkeeper positioning, and shot outcomes. The model identified key moments including approach patterns, shot placement, and save attempts."
-                            elif "card" in prompt_lower:
-                                response = f"Disciplinary analysis shows foul situations, referee decisions, and player reactions. The model detected card incidents with details about the nature of fouls, referee assessments, and their impact on match flow."
-                            elif "player" in prompt_lower:
-                                response = f"Player analysis reveals individual actions, movements, and tactical contributions. The model identified key players, their positioning, ball control, and strategic decisions throughout the video."
-                            else:
-                                response = f"Comprehensive video analysis completed. The Cosmos-Reason1-7B model processed the football content and identified key events, player interactions, tactical patterns, and significant moments. The analysis covers ball movement, player positioning, team strategies, and match dynamics."
-                        else:
-                            response = f"Video analysis completed. The Cosmos-Reason1-7B model processed the football content and detected relevant events including player actions, ball movement, and tactical situations."
-                
-                # Remove input from response
-                if prompt in response:
-                    response = response.replace(prompt, "").strip()
-                    
-                return response
-                
-            except Exception as e:
-                print(f"Multimodal processing error: {str(e)}")
-                return f"Cosmos-Reason1-7B model analysis completed. The model processed the multimodal content and detected relevant events in the video/images."
-        
-        else:
-            # Text-only generation
-            inputs = tokenizer(
-                prompt, 
-                return_tensors="pt", 
-                truncation=True, 
-                max_length=1024
+        # Generate with the model
+        with torch.no_grad():
+            outputs = model.generate(
+                **processed_inputs,
+                max_new_tokens=512,
+                temperature=0.7,
+                do_sample=True,
+                pad_token_id=tokenizer.eos_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                repetition_penalty=1.1
             )
-            inputs = {k: v.to(device) for k, v in inputs.items()}
-            
-            # Generate response
-            with torch.no_grad():
-                if hasattr(model, 'generate'):
-                    outputs = model.generate(
-                        **inputs,
-                        max_new_tokens=512,
-                        temperature=0.7,
-                        do_sample=True,
-                        pad_token_id=tokenizer.eos_token_id,
-                        eos_token_id=tokenizer.eos_token_id,
-                        repetition_penalty=1.1
-                    )
-                    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-                else:
-                    outputs = model(**inputs)
-                    
-                    # Create contextual response based on the prompt
-                    prompt_lower = prompt.lower()
-                    
-                    if "goal" in prompt_lower:
-                        response = f"Based on the text analysis, I can provide insights about goal-scoring situations. The model understands football tactics, player positioning, and scoring opportunities. Analysis covers attacking patterns, finishing techniques, and goal-scoring strategies."
-                    elif "penalty" in prompt_lower:
-                        response = f"Penalty analysis covers taker psychology, goalkeeper strategies, and shot placement techniques. The model understands the tactical and psychological aspects of penalty situations in football."
-                    elif "card" in prompt_lower:
-                        response = f"Disciplinary analysis covers foul types, referee decision-making, and player behavior patterns. The model understands the rules and consequences of different types of infractions."
-                    elif "player" in prompt_lower:
-                        response = f"Player analysis covers individual skills, tactical roles, and performance patterns. The model understands player positioning, ball control, and strategic contributions."
-                    else:
-                        response = f"The Cosmos-Reason1-7B model has analyzed the text content and can provide detailed football analysis including tactical insights, player evaluations, and strategic assessments."
-            
-            # Remove input from response
-            if prompt in response:
-                response = response.replace(prompt, "").strip()
-            
-            return response
+            response = tokenizer.decode(outputs[0], skip_special_tokens=True)
         
-    except Exception as e:
-        print(f"Error in multimodal generation: {str(e)}")
-        return f"Cosmos-Reason1-7B model analysis completed. The model processed the content and can provide detailed analysis of the video/images."
+        # Remove input from response
+        if prompt in response:
+            response = response.replace(prompt, "").strip()
+            
+        return response
+    
+    else:
+        # Text-only generation
+        inputs = tokenizer(
+            prompt, 
+            return_tensors="pt", 
+            truncation=True, 
+            max_length=1024
+        )
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+        
+        # Generate response
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=512,
+                temperature=0.7,
+                do_sample=True,
+                pad_token_id=tokenizer.eos_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                repetition_penalty=1.1
+            )
+            response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        
+        # Remove input from response
+        if prompt in response:
+            response = response.replace(prompt, "").strip()
+        
+        return response
 
 def _safe_remove(path: str) -> None:
     """Safely remove file"""
