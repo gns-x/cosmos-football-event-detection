@@ -151,10 +151,11 @@ class PredictionGenerator:
         resolved_path = Path(video_path)
         
         # Try different path resolution strategies
+        # Evaluation runs from 06_evaluation/ directory
         possible_paths = [
-            resolved_path,  # Direct path
             Path("../") / video_path,  # Relative to evaluation directory (06_evaluation)
             Path("../../") / video_path,  # Relative to project root
+            resolved_path,  # Direct path
             Path.cwd() / video_path,  # Relative to current working directory
             Path(video_path).resolve()  # Absolute path
         ]
@@ -167,9 +168,6 @@ class PredictionGenerator:
         
         if resolved_path is None:
             print(f"  ⚠️  Video not found: {video_path}")
-            print(f"  🔍 Tried paths: {[str(p) for p in possible_paths]}")
-            print(f"  📁 Current working directory: {Path.cwd()}")
-            print(f"  📁 Test file location: {self.test_file}")
             return {
                 "video": video_path,
                 "error": "Video file not found"
