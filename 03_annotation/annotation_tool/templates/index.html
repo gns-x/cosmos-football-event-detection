@@ -527,8 +527,9 @@
                 document.getElementById('videoClass').textContent = video.class.replace(/_/g, ' ');
                 document.getElementById('currentTime').textContent = '0:00';
                 
-                // Load video
-                videoPlayer.src = `/api/video/${video.path}`;
+                // Load video using pre-encoded url_path if provided
+                const apiPath = video.url_path ? video.url_path : video.path;
+                videoPlayer.src = `/api/video/${apiPath}`;
                 
                 // Reset annotations
                 annotations = [];

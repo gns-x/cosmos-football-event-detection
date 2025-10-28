@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 from datetime import datetime
-from urllib.parse import unquote
+from urllib.parse import unquote, quote
 
 app = Flask(__name__)
 
@@ -47,10 +47,13 @@ def get_videos():
             print(f"[DEBUG] Found {len(video_files)} videos in {event_class}")
             for video_file in video_files:
                 relative_path = str(video_file.relative_to(raw_videos_dir))
-                print(f"[DEBUG] Video: {video_file.name} -> {relative_path}")
+                # Pre-encode URL path to preserve characters like '#', spaces, unicode etc.
+                url_path = quote(relative_path, safe='/._-()')
+                print(f"[DEBUG] Video: {video_file.name} -> {relative_path} | url_path={url_path}")
                 videos.append({
                     'name': video_file.stem,
                     'path': relative_path,
+                    'url_path': url_path,
                     'class': event_class,
                     'full_path': str(video_file)
                 })
