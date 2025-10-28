@@ -173,39 +173,8 @@ test:
 	@echo "  ✅ Phase 6: Evaluation Pipeline"
 	@echo "  ✅ Phase 7: Final End-to-End Inference"
 
-# Execute fine-tuning on A100
-train:
-	@echo "🚀 Starting Simplified Cosmos Training Preparation"
-	@echo "=================================================================="
-	@echo "⚠️  This prepares data for Cosmos-Reason1-7B Vision-Language Model"
-	@echo "⚠️  Uses simplified preparation method for compatibility"
-	@echo ""
-	@echo "📋 Training Configuration:"
-	@echo "  Model: Cosmos-Reason1-7B (Vision-Language Model)"
-	@echo "  Method: Simplified preparation and tokenization"
-	@echo "  Dataset: Football video events"
-	@echo "  Output: checkpoints/football_sft/"
-	@echo ""
-	@echo "🔧 Activating environment..."
-	@source cosmos-env/bin/activate && \
-		echo "📋 Checking GPU availability..." && \
-		nvidia-smi && \
-		echo "" && \
-		echo "🎯 Starting Cosmos training preparation..." && \
-		cd 05_training && \
-		echo "📊 Preparing LLaVA format datasets..." && \
-		python ../scripts/prepare_cosmos_training.py && \
-		echo "🚀 Starting Cosmos RL training..." && \
-		cosmos-rl --config football_sft_config.toml --node-ip-list 127.0.0.1 custom_football_sft.py && \
-		echo "✅ Training completed!"
-	@echo ""
-	@echo "📊 Training Results:"
-	@echo "  📁 Checkpoints: 05_training/checkpoints/"
-	@echo "  📈 Logs: 05_training/logs/"
-	@echo "  🎯 LoRA Adapter: Ready for evaluation"
-
 # Phase 5: Training Pipeline Smoke Test
-smoke-test:
+train:
 	@echo "🧪 Phase 5: Training Pipeline Smoke Test"
 	@echo "=================================================================="
 	@echo "🎯 Goal: Verify training works and model can overfit"
