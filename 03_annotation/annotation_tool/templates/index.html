@@ -45,8 +45,9 @@
 
         .main-content {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 3fr 2fr; /* Wider annotation panel for easier access */
             gap: 20px;
+            align-items: start; /* Align panels at the top */
         }
 
         @media (max-width: 1024px) {
@@ -60,6 +61,13 @@
             border-radius: 15px;
             padding: 25px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        /* Keep annotation panel visible while scrolling the video */
+        .right-panel {
+            position: sticky;
+            top: 20px;
+            height: fit-content;
         }
 
         .panel-title {
@@ -119,13 +127,35 @@
             background: #000;
             border-radius: 10px;
             overflow: hidden;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
 
         video {
             width: 100%;
             height: auto;
             display: block;
+        }
+
+        /* Keep video controls accessible and visible */
+        .video-controls-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .scrub-buttons {
+            display: flex;
+            gap: 6px;
+        }
+        .kbd {
+            background: #eef1ff;
+            border: 1px solid #cfd5ff;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 12px;
+            color: #5461d4;
         }
 
         .progress-section {
@@ -386,7 +416,17 @@
                     </div>
                 </div>
 
-                <div class="current-time-display" id="currentTime">0:00</div>
+                <div class="video-controls-row">
+                    <div>
+                        <span class="info-label">Current time:</span>
+                        <span class="current-time-display" id="currentTime" style="display:inline-block; padding:6px 10px; font-size:1.2em; background:#eef1ff; color:#333; border-radius:8px;">0:00</span>
+                    </div>
+                    <div class="scrub-buttons">
+                        <button class="btn" style="padding:8px 12px;" onclick="seekRelative(-5)">⏪ -5s <span class="kbd">J</span></button>
+                        <button class="btn" style="padding:8px 12px;" onclick="togglePlayPause()">⏯️ Play/Pause <span class="kbd">Space</span></button>
+                        <button class="btn" style="padding:8px 12px;" onclick="seekRelative(5)">+5s ⏩ <span class="kbd">L</span></button>
+                    </div>
+                </div>
 
                 <div class="video-container">
                     <video id="videoPlayer" controls>
@@ -414,8 +454,8 @@
                 </div>
 
                 <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="addAnnotation()">
-                        ➕ Add Annotation
+                    <button class="btn btn-primary" onclick="addAnnotation()" title="Keyboard: A">
+                        ➕ Add Annotation <span class="kbd">A</span>
                     </button>
                 </div>
 
@@ -425,11 +465,11 @@
                 </div>
 
                 <div class="action-buttons" style="margin-top: 30px;">
-                    <button class="btn btn-success" onclick="saveAndNext()">
-                        💾 Save & Next
+                    <button class="btn btn-success" onclick="saveAndNext()" title="Keyboard: S">
+                        💾 Save & Next <span class="kbd">S</span>
                     </button>
-                    <button class="btn btn-danger" onclick="skipVideo()">
-                        ⏭️ Skip
+                    <button class="btn btn-danger" onclick="skipVideo()" title="Keyboard: N">
+                        ⏭️ Skip <span class="kbd">N</span>
                     </button>
                 </div>
             </div>
@@ -464,6 +504,20 @@
                     const current = videoPlayer.currentTime;
                     document.getElementById('currentTime').textContent = formatTime(current);
                 }, 100);
+                
+                // Keyboard shortcuts for faster UX
+                document.addEventListener('keydown', (e) => {
+                    // Ignore when typing in inputs (not used now, but future-safe)
+                    const tag = (e.target || {}).tagName || '';
+                    if (['INPUT','TEXTAREA'].includes(tag)) return;
+                    
+                    if (e.code === 'Space') { e.preventDefault(); togglePlayPause(); }
+                    if (e.key.toLowerCase() === 'a') { e.preventDefault(); addAnnotation(); }
+                    if (e.key.toLowerCase() === 's') { e.preventDefault(); saveAndNext(); }
+                    if (e.key.toLowerCase() === 'n') { e.preventDefault(); skipVideo(); }
+                    if (e.key.toLowerCase() === 'j') { e.preventDefault(); seekRelative(-5); }
+                    if (e.key.toLowerCase() === 'l') { e.preventDefault(); seekRelative(5); }
+                });
                 
                 // Update duration when video loads
                 videoPlayer.addEventListener('loadedmetadata', () => {
@@ -610,6 +664,16 @@
                 annotations.splice(index, 1);
                 updateAnnotationsList();
             }
+        }
+
+        function togglePlayPause() {
+            const v = document.getElementById('videoPlayer');
+            if (v.paused) { v.play(); } else { v.pause(); }
+        }
+
+        function seekRelative(delta) {
+            const v = document.getElementById('videoPlayer');
+            v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + delta));
         }
 
         async function saveAndNext() {
