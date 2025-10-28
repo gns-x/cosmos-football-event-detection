@@ -196,7 +196,7 @@ train:
 		echo "📊 Preparing LLaVA format datasets..." && \
 		python ../scripts/prepare_cosmos_training.py && \
 		echo "🚀 Starting Cosmos RL training..." && \
-		cosmos-rl --config football_sft_config.toml custom_football_sft.py && \
+		cosmos-rl --config football_sft_config.toml --node-ip-list 127.0.0.1 custom_football_sft.py && \
 		echo "✅ Training completed!"
 	@echo ""
 	@echo "📊 Training Results:"
