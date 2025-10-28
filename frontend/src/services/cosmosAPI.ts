@@ -14,7 +14,7 @@ export interface AnalysisResponse {
   timestamp: string;
   actor: string;
   events?: EventData[];
-  summary?: any;
+  summary?: Record<string, unknown>;
 }
 
 export interface EventData {
@@ -82,8 +82,8 @@ class CosmosAPIService {
     try {
       const response = await fetch(`${this.baseURL}/model-info`);
       return await response.json();
-    } catch (error) {
-      console.error('Failed to get model info:', error);
+    } catch (err) {
+      console.error('Failed to get model info:', err);
       throw new Error('Failed to get model information');
     }
   }

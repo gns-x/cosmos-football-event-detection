@@ -7,17 +7,17 @@ Simple backend using transformers library (no vLLM to avoid SQLite issues)
 
 import os
 import tempfile
-import torch
-from typing import Optional
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from transformers import AutoTokenizer, AutoModel, AutoProcessor
-from qwen_vl_utils import process_vision_info
-import uvicorn
-from dotenv import load_dotenv
-import cv2
-import numpy as np
-from PIL import Image
+import torch  # type: ignore
+from typing import Optional, Dict, Any, List
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException  # type: ignore
+from fastapi.middleware.cors import CORSMiddleware  # type: ignore
+from transformers import AutoTokenizer, AutoModel, AutoProcessor  # type: ignore
+from qwen_vl_utils import process_vision_info  # type: ignore
+import uvicorn  # type: ignore
+from dotenv import load_dotenv  # type: ignore
+import cv2  # type: ignore
+import numpy as np  # type: ignore
+from PIL import Image  # type: ignore
 import base64
 import io
 
@@ -101,7 +101,7 @@ async def startup_event():
         raise e
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> Dict[str, Any]:
     """Health check endpoint"""
     return {
         "status": "healthy",
@@ -113,7 +113,7 @@ async def health_check():
     }
 
 @app.get("/model-info")
-async def model_info():
+async def model_info() -> Dict[str, Any]:
     """Get model information"""
     return {
         "model_name": MODEL_NAME,
@@ -126,7 +126,7 @@ async def model_info():
     }
 
 @app.post("/analyze-text")
-async def analyze_text(prompt: str = Form(...)):
+async def analyze_text(prompt: str = Form(...)) -> Dict[str, Any]:
     """Analyze text-only prompts"""
     if not model or not tokenizer:
         raise HTTPException(status_code=503, detail="Model not loaded")
@@ -207,7 +207,7 @@ async def analyze_text(prompt: str = Form(...)):
 async def analyze_image(
     prompt: str = Form(...),
     file: UploadFile = File(...)
-):
+) -> Dict[str, Any]:
     """Analyze uploaded image"""
     if not model or not processor:
         raise HTTPException(status_code=503, detail="Model not loaded")
@@ -257,7 +257,7 @@ async def analyze_video(
     system_prompt: str = Form("You are a helpful assistant specialized in football video analysis."),
     video_file: UploadFile = File(...),
     fps: int = Form(4)
-):
+) -> Dict[str, Any]:
     """Analyze uploaded video"""
     if not model or not processor:
         raise HTTPException(status_code=503, detail="Model not loaded")
@@ -292,7 +292,7 @@ async def analyze_video(
         _safe_remove(vid_path)
 
 @app.post("/clear-cache")
-async def clear_cache():
+async def clear_cache() -> Dict[str, str]:
     """Clear GPU cache"""
     try:
         if torch.cuda.is_available():
@@ -301,7 +301,7 @@ async def clear_cache():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cache clear failed: {str(e)}")
 
-def _generate_multimodal_text(messages) -> str:
+def _generate_multimodal_text(messages: List[Dict[str, Any]]) -> str:
     """Generate text using transformers with multimodal inputs"""
     try:
         # Build chat prompt

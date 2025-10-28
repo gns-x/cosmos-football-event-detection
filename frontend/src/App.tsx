@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { cosmosAPI, AnalysisResponse } from './services/cosmosAPI';
+import { cosmosAPI, AnalysisResponse, EventData } from './services/cosmosAPI';
 
 // Custom SVG icons to avoid content blocker issues
 const PlayIcon = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -446,11 +446,11 @@ Always provide structured, detailed responses that directly answer the user's qu
                           <p className="text-sm text-gray-300 mb-3">{analysisResult.answer}</p>
                           
                           {/* Show events summary if available */}
-                          {(analysisResult as any).events && (
+                          {(analysisResult as AnalysisResponse & { events?: EventData[] }).events && (
                             <div className="bg-[#1a1a1a] rounded-lg p-3 mb-3">
                               <h4 className="text-xs font-semibold text-[#76B900] mb-2">Events Detected:</h4>
                               <div className="space-y-1">
-                                {(analysisResult as any).events.map((event: any, index: number) => (
+                                {(analysisResult as AnalysisResponse & { events?: EventData[] }).events?.map((event: EventData, index: number) => (
                                   <div key={index} className="flex items-center gap-2 text-xs">
                                     <span className="w-2 h-2 bg-[#76B900] rounded-full"></span>
                                     <span className="text-gray-300">{event.event_type}</span>
