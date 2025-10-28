@@ -70,16 +70,17 @@ function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const previousVideoUrlRef = useRef<string | null>(null);
 
-  const userPrompt = "Which worker picked up the dropped box?";
-  const systemPrompt = `You are a helpful assistant that analyzes video content and provides clear, accurate responses.
+  const [userPrompt, setUserPrompt] = useState("Which player scored the goal?");
+  const [systemPrompt, setSystemPrompt] = useState(`You are a helpful assistant specialized in football video analysis. Analyze the video content carefully and provide detailed reasoning followed by a clear answer.
 
-<think>
-Analyze the video carefully, noting key events, people, and objects. Consider the timeline of events and identify relevant actors.
-</think>
+Please analyze the video and provide:
+1. Step-by-step reasoning about what you observe
+2. A clear, direct answer to the user's question
+3. Confidence level in your analysis
+4. Key timestamp or moment of interest
+5. Main actor or subject involved
 
-<answer>
-Provide a clear, direct answer to the user's question based on your analysis.
-</answer>`;
+Format your response with structured reasoning followed by a clear answer.`);
 
   const togglePlay = async () => {
     if (videoRef.current) {
@@ -184,10 +185,16 @@ Provide a clear, direct answer to the user's question based on your analysis.
       return;
     }
 
+    if (!userPrompt.trim()) {
+      alert('Please enter a user prompt');
+      return;
+    }
+
     setIsAnalyzing(true);
     try {
       const result = await cosmosAPI.analyzeVideo({
         prompt: userPrompt,
+        systemPrompt: systemPrompt,
         videoFile: uploadedFile
       });
       setAnalysisResult(result);
@@ -225,15 +232,6 @@ Provide a clear, direct answer to the user's question based on your analysis.
               }
             </span>
           </div>
-          {uploadedFile && backendStatus === 'ready' && (
-            <button
-              onClick={analyzeVideo}
-              disabled={isAnalyzing}
-              className="px-4 py-2 bg-gradient-to-r from-[#76B900] to-[#87ca00] hover:from-[#87ca00] hover:to-[#76B900] text-black font-semibold rounded-lg transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isAnalyzing ? 'Analyzing...' : 'Analyze Video'}
-            </button>
-          )}
         </div>
       </div>
       
@@ -328,9 +326,10 @@ Provide a clear, direct answer to the user's question based on your analysis.
                 <h2 className="text-lg font-semibold mb-3 text-[#76B900] group-hover:text-white transition-colors duration-300">User Prompt</h2>
               <textarea
                 value={userPrompt}
-                readOnly
+                onChange={(e) => setUserPrompt(e.target.value)}
                 className="w-full bg-[#1a1a1a] border border-gray-700 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#76B900] focus:border-transparent"
                 rows={2}
+                placeholder="Enter your question about the video..."
               />
                 <div className="text-xs text-gray-400 mt-2 text-right">{userPrompt.length}/250</div>
               </div>
@@ -343,11 +342,51 @@ Provide a clear, direct answer to the user's question based on your analysis.
                 <h2 className="text-lg font-semibold mb-3 text-[#76B900] group-hover:text-white transition-colors duration-300">System Prompt</h2>
               <textarea
                 value={systemPrompt}
-                readOnly
+                onChange={(e) => setSystemPrompt(e.target.value)}
                 className="w-full bg-[#1a1a1a] border border-gray-700 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#76B900] focus:border-transparent"
                 rows={8}
+                placeholder="Enter system instructions for the AI..."
               />
                 <div className="text-xs text-gray-400 mt-2 text-right">{systemPrompt.length}/4000</div>
+              </div>
+            </div>
+
+            {/* Submit Button Card */}
+            <div className="bg-[#121212] border-2 border-transparent rounded-lg shadow-lg p-5 relative group hover:border-[#76B900] transition-all duration-300 ease-in-out hover:shadow-[0_0_20px_rgba(118,185,0,0.3)] hover:shadow-lg hover:scale-[1.02]">
+              <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-[#76B900]/10 via-transparent to-[#76B900]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="relative z-10">
+                <button
+                  onClick={analyzeVideo}
+                  disabled={isAnalyzing || !uploadedFile || !userPrompt.trim() || backendStatus !== 'ready'}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-[#76B900] to-[#87ca00] hover:from-[#87ca00] hover:to-[#76B900] text-black font-semibold rounded-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_0_20px_rgba(118,185,0,0.4)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
+                >
+                  {isAnalyzing ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                      Analyzing with Cosmos...
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 12l2 2 4-4"/>
+                        <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/>
+                        <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/>
+                        <path d="M12 3c0 1-1 3-3 3s-3-2-3-3 1-3 3-3 3 2 3 3"/>
+                        <path d="M12 21c0-1 1-3 3-3s3 2 3 3-1 3-3 3-3-2-3-3"/>
+                      </svg>
+                      Analyze Video with Cosmos
+                    </div>
+                  )}
+                </button>
+                {!uploadedFile && (
+                  <p className="text-xs text-red-400 mt-2 text-center">Please upload a video first</p>
+                )}
+                {!userPrompt.trim() && (
+                  <p className="text-xs text-red-400 mt-2 text-center">Please enter a user prompt</p>
+                )}
+                {backendStatus !== 'ready' && (
+                  <p className="text-xs text-red-400 mt-2 text-center">Backend not ready</p>
+                )}
               </div>
             </div>
 

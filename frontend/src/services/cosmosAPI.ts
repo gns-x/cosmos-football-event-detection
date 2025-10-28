@@ -3,6 +3,7 @@ const API_BASE_URL = 'http://localhost:8000';
 
 export interface VideoAnalysisRequest {
   prompt: string;
+  systemPrompt?: string;
   videoFile?: File;
 }
 
@@ -71,6 +72,10 @@ class CosmosAPIService {
     try {
       const formData = new FormData();
       formData.append('prompt', request.prompt);
+      
+      if (request.systemPrompt) {
+        formData.append('system_prompt', request.systemPrompt);
+      }
       
       if (request.videoFile) {
         formData.append('video_file', request.videoFile);
