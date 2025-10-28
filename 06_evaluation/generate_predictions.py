@@ -18,35 +18,18 @@ import os
 os.environ['TRANSFORMERS_NO_ADVISORY_WARNINGS'] = '1'
 
 try:
-    # Import transformers first to avoid conflicts
-    from transformers import AutoProcessor
-    AutoProcessor
+    # Import transformers for LoRA model loading
+    import torch
+    import transformers
+    from transformers import AutoTokenizer, AutoProcessor
+    from peft import PeftModel
+    HAS_TRANSFORMERS = True
     
-    # Now import vLLM
-    from vllm import LLM, SamplingParams
-    import vllm  # Import vllm module to check version
-    from qwen_vl_utils import process_vision_info
-    HAS_VLLM = True
-    
-    # Check if LoRA is available in this version
-    if hasattr(vllm, 'lora'):
-        from vllm.lora.request import LoRARequest
-        HAS_LORA = True
-    elif hasattr(vllm, 'LoRARequest'):
-        from vllm import LoRARequest
-        HAS_LORA = True
-    else:
-        # Try alternative import for newer versions
-        try:
-            from vllm.lora import LoRARequest
-            HAS_LORA = True
-        except ImportError:
-            HAS_LORA = False
-            
-    print(f"✅ vLLM {vllm.__version__} loaded")
-    print(f"✅ LoRA support: {HAS_LORA}")
+    print(f"✅ Transformers {transformers.__version__} loaded")
+    print(f"✅ PyTorch {torch.__version__} loaded")
+    print(f"✅ CUDA available: {torch.cuda.is_available()}")
 except ImportError as e:
-    print(f"❌ Failed to import vLLM packages: {e}")
+    print(f"❌ Failed to import transformers packages: {e}")
     sys.exit(1)
 
 
@@ -60,7 +43,8 @@ class PredictionGenerator:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
-        self.llm = None
+        self.model = None
+        self.tokenizer = None
         self.processor = None
         
         # Load test data
@@ -84,62 +68,63 @@ class PredictionGenerator:
         return test_data
     
     def _load_model(self):
-        """Load the base Cosmos model (no LoRA for now)."""
-        print("\n🚀 Loading Cosmos-Reason1-7B base model...")
+        """Load the base Cosmos model with LoRA adapter."""
+        print("\n🚀 Loading Cosmos-Reason1-7B base model with LoRA adapter...")
         
-        # Always use base model from HuggingFace
+        # Base model from HuggingFace
         base_model = "nvidia/Cosmos-Reason1-7B"
         
-        # Load processor
+        # Load tokenizer and processor
         try:
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                base_model, 
+                trust_remote_code=True
+            )
+            if self.tokenizer.pad_token is None:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
+            
             self.processor = AutoProcessor.from_pretrained(
                 base_model, 
-                trust_remote_code=True,
-                use_auth_token=True
+                trust_remote_code=True
             )
-            print("✅ Processor loaded")
+            print("✅ Tokenizer and processor loaded")
         except Exception as e:
-            print(f"❌ Failed to load processor: {e}")
+            print(f"❌ Failed to load tokenizer/processor: {e}")
             self.processor = None
             return
         
-        # Load LLM (base model only, no LoRA)
-        # Check if LoRA path exists and is valid
+        # Load base model
+        try:
+            print("📋 Loading base Cosmos-Reason1-7B model...")
+            self.model = transformers.Qwen2_5_VLForConditionalGeneration.from_pretrained(
+                base_model,
+                torch_dtype=torch.bfloat16,
+                device_map="auto",
+                trust_remote_code=True
+            )
+            print("✅ Base model loaded")
+        except Exception as e:
+            print(f"❌ Failed to load base model: {e}")
+            self.model = None
+            return
+        
+        # Load LoRA adapter if available
         lora_exists = self.lora_path and self.lora_path.exists() and (self.lora_path / "adapter_config.json").exists()
         
-        if lora_exists and HAS_LORA:
-            print(f"📥 LoRA adapter found at: {self.lora_path}")
-            print("⚠️  Cosmos RL LoRA support not yet implemented, using base model")
-        
-        # Always use base model for now
-        print("📋 Using base Cosmos-Reason1-7B model")
-        try:
-            # Try loading with trust_remote_code first
+        if lora_exists:
+            print(f"📥 Loading LoRA adapter from: {self.lora_path}")
             try:
-                self.llm = LLM(
-                    model=base_model,
-                    limit_mm_per_prompt={"video": 10},
-                    dtype="bfloat16",
-                    gpu_memory_utilization=0.8,
-                    trust_remote_code=True
-                )
-                print("✅ Model loaded with trust_remote_code")
-            except Exception as e1:
-                print(f"⚠️  First attempt failed: {e1}")
-                print("   Trying alternative loading method...")
-                # Try without trust_remote_code
-                self.llm = LLM(
-                    model=base_model,
-                    limit_mm_per_prompt={"video": 10},
-                    dtype="bfloat16",
-                    gpu_memory_utilization=0.8
-                )
-                print("✅ Model loaded without trust_remote_code")
-        except Exception as e:
-            print(f"❌ Failed to load model completely: {e}")
-            print("⚠️  Model loading failed, evaluation will proceed with basic metrics only")
-            self.llm = None
-            self.processor = None
+                self.model = PeftModel.from_pretrained(self.model, str(self.lora_path))
+                print("✅ LoRA adapter loaded and merged")
+            except Exception as e:
+                print(f"❌ Failed to load LoRA adapter: {e}")
+                print("⚠️  Continuing with base model only")
+        else:
+            print("⚠️  No LoRA adapter found, using base model only")
+        
+        # Set model to evaluation mode
+        self.model.eval()
+        print("✅ Model ready for inference")
     
     def generate_single_prediction(self, test_item: Dict[str, Any]) -> Dict[str, Any]:
         """Generate prediction for a single test item using the actual model."""
@@ -178,91 +163,98 @@ class PredictionGenerator:
         
         try:
             # Create football analysis prompt
-            football_prompt = "Analyze the following football clip. Identify all significant events including goals, cards, and shots. For each event, provide a detailed description including player, team, and jersey info, the event class, and precise start/ propagated timestamps. Output *only* a valid JSON array."
+            football_prompt = "Analyze this football video clip and identify all significant events including goals, penalty shots, cards, and shots. For each event, provide: event type, description, start time, and end time. Output as JSON array."
             
-            # Create video messages
-            video_messages = [
+            # Create conversation format
+            messages = [
                 {
                     "role": "system",
-                    "content": "You are a helpful assistant that can analyze football videos and identify significant events including goals, cards, and shots. For each event, provide a detailed description including player, team, and jersey info, the event class, and precise start/end timestamps. Output *only* a valid JSON array."
+                    "content": "You are a football video analysis expert. Analyze the video and identify significant events."
                 },
                 {
-                    "role": "user",
+                    "role": "user", 
                     "content": [
                         {"type": "text", "text": football_prompt},
-                        {
-                            "type": "video",
-                            "video": f"file://{resolved_path.absolute()}",
-                            "fps": 4,
-                        }
-                    ],
-                },
+                        {"type": "video", "video": str(resolved_path)}
+                    ]
+                }
             ]
             
-            # Process the prompt
-            prompt = self.processor.apply_chat_template(
-                video_messages,
-                tokenize=False,
-                add_generation_prompt=True,
+            # Process with the model
+            text = self.processor.apply_chat_template(
+                messages, 
+                tokenize=False, 
+                add_generation_prompt=True
             )
             
-            # Process vision information
-            image_inputs, video_inputs, video_kwargs = process_vision_info(
-                video_messages,
-                return_video_kwargs=True
+            # Process video and text
+            inputs = self.processor(
+                text=[text],
+                videos=[str(resolved_path)],
+                padding=True,
+                return_tensors="pt"
             )
             
-            # Prepare multimodal data
-            mm_data = {}
-            if video_inputs is not None:
-                mm_data["video"] = video_inputs
+            # Move to GPU if available
+            if torch.cuda.is_available():
+                inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
             
-            # Setup sampling parameters
-            sampling_params = SamplingParams(
-                max_tokens=4096,
-                temperature=0.6,
-                top_p=0.95,
-            )
-            
-            # Prepare inputs
-            llm_inputs = {
-                "prompt": prompt,
-                "multi_modal_data": mm_data,
-                "mm_processor_kwargs": video_kwargs,
-            }
-            
-            # Add LoRA request if available
-            if self.lora_path and self.lora_path.exists():
-                lora_request = LoRARequest(
-                    lora_name="football_adapter",
-                    lora_int_id=1
+            # Generate response
+            with torch.no_grad():
+                outputs = self.model.generate(
+                    **inputs,
+                    max_new_tokens=512,
+                    do_sample=True,
+                    temperature=0.7,
+                    pad_token_id=self.tokenizer.eos_token_id
                 )
-                llm_inputs["lora_request"] = lora_request
             
-            # Generate prediction
-            outputs = self.llm.generate([llm_inputs], sampling_params=sampling_params)
-            generated_text = outputs[0].outputs[0].text.strip()
+            # Decode response
+            response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
             
-            # Parse JSON
+            # Extract assistant response
+            if "Assistant:" in response:
+                assistant_response = response.split("Assistant:")[-1].strip()
+            else:
+                assistant_response = response
+            
+            print(f"  ✅ Generated response: {assistant_response[:100]}...")
+            
+            # Parse response as JSON if possible
             try:
-                analysis = json.loads(generated_text)
-                if not isinstance(analysis, list):
-                    analysis = [analysis]
-            except json.JSONDecodeError as e:
-                print(f"  ⚠️  JSON parse error: {e}")
-                analysis = [{"raw_output": generated_text}]
+                # Try to extract JSON from response
+                import re
+                json_match = re.search(r'\[.*\]', assistant_response, re.DOTALL)
+                if json_match:
+                    events = json.loads(json_match.group())
+                else:
+                    # Fallback: create a single event from the response
+                    events = [{
+                        "event": "analysis",
+                        "description": assistant_response,
+                        "start_time": "0:00",
+                        "end_time": "0:00"
+                    }]
+            except json.JSONDecodeError:
+                # Fallback: create a single event from the response
+                events = [{
+                    "event": "analysis", 
+                    "description": assistant_response,
+                    "start_time": "0:00",
+                    "end_time": "0:00"
+                }]
             
             # Extract first event as primary prediction
-            primary_event = analysis[0] if analysis else {}
+            primary_event = events[0] if events else {}
             
             prediction = {
                 "video_file": video_name,
                 "video_path": str(resolved_path),
                 "event": primary_event.get("event", "Unknown"),
-                "description": primary_event.get("description", generated_text),
+                "description": primary_event.get("description", assistant_response),
                 "start_time": primary_event.get("start_time", "0:00"),
                 "end_time": primary_event.get("end_time", "0:00"),
-                "all_events": analysis,
+                "all_events": events,
                 "model_version": "cosmos-reason1-7b-lora" if self.lora_path else "cosmos-reason1-7b-base",
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ")
             }
