@@ -90,26 +90,9 @@ def process_video(video_path: str, model, tokenizer, processor):
     """Process a single video and return analysis."""
     print(f"\n🎬 Processing: {Path(video_path).name}")
     
-    # First, try to infer event type from filename
-    video_name = Path(video_path).name.lower()
-    inferred_event = None
-    valid_event_classes = {
-        "goal", "penalty_shot", "red_card", "yellow_card", 
-        "shot_on_target", "goal_line_event", "hat_trick", "woodworks"
-    }
-    
-    for event_class in valid_event_classes:
-        if event_class.replace("_", " ") in video_name or event_class in video_name:
-            inferred_event = event_class
-            break
-    
-    print(f"  🔍 Inferred event from filename: {inferred_event}")
-    
     try:
-        # Create the football analysis prompt with specific event classes
-        football_prompt = f"""Analyze this football video and identify significant events. 
-
-This video filename suggests it might contain: {inferred_event if inferred_event else 'various football events'}
+        # Create the football analysis prompt for real video analysis
+        football_prompt = """Analyze this football video and identify significant events by watching the actual video content.
 
 VALID EVENT CLASSES:
 - goal: When a player scores a goal
@@ -121,13 +104,18 @@ VALID EVENT CLASSES:
 - hat_trick: When a player scores 3 goals in one match
 - woodworks: Shots that hit the post or crossbar
 
-For each event, provide:
+CRITICAL REQUIREMENTS:
+1. Watch the video carefully and identify events based on what you actually see
+2. Provide accurate timestamps based on when events occur in the video
+3. Only identify events that are clearly visible in the video
+4. If no clear events are visible, return an empty array []
+5. Do not guess or make assumptions - only report what you observe
+
+For each event you observe, provide:
 - event: One of the valid classes above
-- description: Brief description of what happened
+- description: Brief description of what you actually see happening
 - start_time: Exact timestamp when event starts (format: "MM:SS")
 - end_time: Exact timestamp when event ends (format: "MM:SS")
-
-IMPORTANT: Watch the video carefully and provide accurate timestamps. If this is a hat trick video, identify the three goals and their timestamps.
 
 Output ONLY a valid JSON array with no additional text."""
         
@@ -135,7 +123,7 @@ Output ONLY a valid JSON array with no additional text."""
         messages = [
             {
                 "role": "system",
-                "content": "You are a professional football video analyst. You must identify specific football events and provide accurate timestamps. Only use the exact event classes provided. Always output valid JSON arrays."
+                "content": "You are a professional football video analyst. You must analyze video content accurately and provide precise timestamps based on what you observe. Only report events that are clearly visible in the video. Do not make assumptions or provide placeholder data."
             },
             {
                 "role": "user", 
@@ -199,7 +187,7 @@ Output ONLY a valid JSON array with no additional text."""
             if json_match:
                 events = json.loads(json_match.group())
                 
-                # Validate and clean events
+                # Validate events but don't modify them - keep original analysis
                 validated_events = []
                 for event in events:
                     if isinstance(event, dict):
@@ -209,129 +197,22 @@ Output ONLY a valid JSON array with no additional text."""
                             validated_event = {
                                 "event": event_type,
                                 "description": event.get("description", ""),
-                                "start_time": event.get("start_time", "0:00"),
-                                "end_time": event.get("end_time", "0:00")
+                                "start_time": event.get("start_time", ""),
+                                "end_time": event.get("end_time", "")
                             }
                             validated_events.append(validated_event)
                         else:
                             print(f"  ⚠️  Invalid event class: {event_type}")
                 
-                if validated_events:
-                    events = validated_events
-                else:
-                    # Fallback: use filename-based classification with realistic timestamps
-                    if inferred_event:
-                        if inferred_event == "hat_trick":
-                            events = [
-                                {
-                                    "event": "hat_trick",
-                                    "description": "Player scores three goals in the match (first goal)",
-                                    "start_time": "0:15",
-                                    "end_time": "0:20"
-                                },
-                                {
-                                    "event": "hat_trick", 
-                                    "description": "Player scores three goals in the match (second goal)",
-                                    "start_time": "0:45",
-                                    "end_time": "0:50"
-                                },
-                                {
-                                    "event": "hat_trick",
-                                    "description": "Player scores three goals in the match (third goal)",
-                                    "start_time": "1:20",
-                                    "end_time": "1:25"
-                                }
-                            ]
-                        else:
-                            events = [{
-                                "event": inferred_event,
-                                "description": f"Detected {inferred_event} event from video content",
-                                "start_time": "0:10",
-                                "end_time": "0:15"
-                            }]
-                    else:
-                        events = [{
-                            "event": "unknown",
-                            "description": f"Could not determine event type from video: {Path(video_path).name}",
-                            "start_time": "0:00",
-                            "end_time": "0:00"
-                        }]
+                events = validated_events if validated_events else []
             else:
-                # Fallback: use filename-based classification with realistic timestamps
-                if inferred_event:
-                    if inferred_event == "hat_trick":
-                        events = [
-                            {
-                                "event": "hat_trick",
-                                "description": "Player scores three goals in the match (first goal)",
-                                "start_time": "0:15",
-                                "end_time": "0:20"
-                            },
-                            {
-                                "event": "hat_trick", 
-                                "description": "Player scores three goals in the match (second goal)",
-                                "start_time": "0:45",
-                                "end_time": "0:50"
-                            },
-                            {
-                                "event": "hat_trick",
-                                "description": "Player scores three goals in the match (third goal)",
-                                "start_time": "1:20",
-                                "end_time": "1:25"
-                            }
-                        ]
-                    else:
-                        events = [{
-                            "event": inferred_event,
-                            "description": f"Detected {inferred_event} event from video content",
-                            "start_time": "0:10",
-                            "end_time": "0:15"
-                        }]
-                else:
-                    events = [{
-                        "event": "unknown",
-                        "description": f"Could not determine event type from video: {Path(video_path).name}",
-                        "start_time": "0:00",
-                        "end_time": "0:00"
-                    }]
-        except json.JSONDecodeError:
-            # Fallback: use filename-based classification with realistic timestamps
-            if inferred_event:
-                if inferred_event == "hat_trick":
-                    events = [
-                        {
-                            "event": "hat_trick",
-                            "description": "Player scores three goals in the match (first goal)",
-                            "start_time": "0:15",
-                            "end_time": "0:20"
-                        },
-                        {
-                            "event": "hat_trick", 
-                            "description": "Player scores three goals in the match (second goal)",
-                            "start_time": "0:45",
-                            "end_time": "0:50"
-                        },
-                        {
-                            "event": "hat_trick",
-                            "description": "Player scores three goals in the match (third goal)",
-                            "start_time": "1:20",
-                            "end_time": "1:25"
-                        }
-                    ]
-                else:
-                    events = [{
-                        "event": inferred_event,
-                        "description": f"Detected {inferred_event} event from video content",
-                        "start_time": "0:10",
-                        "end_time": "0:15"
-                    }]
-            else:
-                events = [{
-                    "event": "unknown",
-                    "description": f"Could not determine event type from video: {Path(video_path).name}",
-                    "start_time": "0:00",
-                    "end_time": "0:00"
-                }]
+                # No JSON found - model didn't provide structured output
+                print(f"  ⚠️  No JSON structure found in response")
+                events = []
+        except json.JSONDecodeError as e:
+            # JSON parsing failed - model output is malformed
+            print(f"  ⚠️  JSON parsing failed: {e}")
+            events = []
         
         return {
             "video_file": Path(video_path).name,
