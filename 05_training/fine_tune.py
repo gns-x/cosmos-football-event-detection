@@ -18,11 +18,11 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import (
     AutoTokenizer, 
     AutoProcessor,
-    AutoModelForCausalLM,
     TrainingArguments,
     Trainer,
     DataCollatorForLanguageModeling
 )
+import transformers
 from peft import LoraConfig, get_peft_model, TaskType
 import numpy as np
 
@@ -118,17 +118,17 @@ def setup_lora_model(model_name: str, config: Dict[str, Any]):
         print("⚠️  AutoProcessor not available, using tokenizer only")
         processor = tokenizer
     
-    # Load base model
-    model = AutoModelForCausalLM.from_pretrained(
+    # Load base model - Cosmos is based on Qwen2.5-VL
+    model = transformers.Qwen2_5_VLForConditionalGeneration.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
         device_map="auto",
         trust_remote_code=True
     )
     
-    # Setup LoRA
+    # Setup LoRA for vision-language model
     lora_config = LoraConfig(
-        task_type=TaskType.CAUSAL_LM,
+        task_type=TaskType.CAUSAL_LM,  # Still causal LM for text generation
         r=config.get('lora_rank', 16),
         lora_alpha=config.get('lora_alpha', 32),
         lora_dropout=config.get('lora_dropout', 0.1),
