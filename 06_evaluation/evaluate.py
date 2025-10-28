@@ -395,6 +395,9 @@ class FootballVideoEvaluator:
             
         except Exception as e:
             print(f"❌ Failed to generate predictions: {e}")
+            print(f"❌ Error type: {type(e).__name__}")
+            print(f"❌ Error details: {str(e)}")
+            print("⚠️  You can try running: make generate-predictions")
             print("⚠️  Returning empty predictions list")
             return []
     

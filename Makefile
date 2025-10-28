@@ -3,12 +3,35 @@
 
 SHELL := /bin/bash
 
-.PHONY: help setup install test train evaluate inference clean deploy status download-videos clean-videos annotation-app clean-delivery preprocess fix-deps
+# Show help and available commands
+help:
+	@echo "🚀 Football Video Analysis Pipeline - Available Commands"
+	@echo "=================================================================="
+	@echo ""
+	@echo "📊 MAIN PIPELINE COMMANDS:"
+	@echo "  make train          - Run training pipeline smoke test"
+	@echo "  make evaluate       - Run evaluation with trained model"
+	@echo "  make inference      - Run inference on all videos"
+	@echo ""
+	@echo "🔧 UTILITY COMMANDS:"
+	@echo "  make generate-predictions - Generate predictions only (for debugging)"
+	@echo "  make fix-deps       - Fix deprecated package warnings"
+	@echo "  make help           - Show this help message"
+	@echo ""
+	@echo "📁 OUTPUT LOCATIONS:"
+	@echo "  Training checkpoints: 05_training/checkpoints/football_sft/"
+	@echo "  Evaluation results:   06_evaluation/results/"
+	@echo "  Inference results:    07_inference/results/"
+	@echo ""
+	@echo "🔍 TROUBLESHOOTING:"
+	@echo "  If evaluation fails: make generate-predictions"
+	@echo "  If dependencies fail: make fix-deps"
+	@echo "  If videos missing: Check 01_data_collection/raw_videos/"
+
+.PHONY: help setup install test train evaluate inference clean deploy status download-videos clean-videos annotation-app clean-delivery preprocess fix-deps generate-predictions
 
 # Default target
-help:
-	@echo "🏈 Cosmos Football Video Analysis - Azure A100 VM Deployment"
-	@echo "=================================================================="
+default: help
 	@echo ""
 	@echo "📋 Available Commands:"
 	@echo "  make deploy         - Complete automated setup from fresh delivery"
@@ -215,13 +238,41 @@ train:
 	@echo "  📈 Expected: train_loss approaching 0.0"
 	@echo "  ✅ Verification: Model can learn from data"
 
+# Generate predictions using trained model
+generate-predictions:
+	@echo "🤖 Generating Predictions with Trained Model"
+	@echo "=================================================================="
+	@echo "🔧 Activating environment..."
+	@source cosmos-env/bin/activate && \
+		echo "📋 Checking for LoRA adapter..." && \
+		if [ -d "05_training/checkpoints/football_sft" ]; then \
+			echo "✅ LoRA adapter found: 05_training/checkpoints/football_sft"; \
+		else \
+			echo "⚠️  No LoRA adapter found, using base model"; \
+		fi && \
+		echo "" && \
+		echo "🎯 Generating predictions for all test videos..." && \
+		cd 06_evaluation && \
+		python generate_predictions.py --test_file ../04_dataset/validation.jsonl --output_dir ./results --lora_path ../05_training/checkpoints/football_sft
+	@echo ""
+	@echo "✅ Predictions generated!"
+	@echo "📁 Predictions saved to: 06_evaluation/results/predictions.json"
+
 # Run evaluation with trained model
 evaluate:
 	@echo "📊 Running Evaluation with Trained Model"
 	@echo "=================================================================="
 	@echo "⚠️  Installing evaluation dependencies..."
 	@source cosmos-env/bin/activate && \
-		pip install scikit-learn rouge-score nltk numpy || echo "⚠️  Some dependencies failed to install, continuing with basic evaluation..." && \
+		echo "📦 Installing scikit-learn..." && \
+		pip install --no-cache-dir scikit-learn && \
+		echo "📦 Installing rouge-score..." && \
+		pip install --no-cache-dir rouge-score && \
+		echo "📦 Installing nltk..." && \
+		pip install --no-cache-dir nltk && \
+		echo "📦 Installing numpy..." && \
+		pip install --no-cache-dir numpy && \
+		echo "✅ All evaluation dependencies installed!" && \
 		echo "📊 Running evaluation..." && \
 		cd 06_evaluation && \
 		python evaluate.py --test_file ../04_dataset/validation.jsonl --results_dir ./results --ground_truth_dir ../03_annotation/ground_truth_json
