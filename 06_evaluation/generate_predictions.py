@@ -130,7 +130,7 @@ class PredictionGenerator:
         """Generate prediction for a single test item using the actual model."""
         
         # If model not loaded, return empty prediction
-        if self.llm is None or self.processor is None:
+        if self.model is None or self.processor is None:
             video_path = test_item.get("video", "unknown_video.mp4")
             video_name = Path(video_path).name
             print(f"  ⚠️  Model not available, skipping prediction")
