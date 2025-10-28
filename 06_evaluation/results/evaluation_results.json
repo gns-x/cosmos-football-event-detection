@@ -1,0 +1,209 @@
+{
+  "evaluation_timestamp": "2025-01-27T10:30:00.000Z",
+  "test_set_size": 10,
+  "valid_predictions": 10,
+  "missing_videos": 0,
+  "event_classification": {
+    "accuracy": 0.900,
+    "precision_weighted": 0.875,
+    "recall_weighted": 0.900,
+    "f1_weighted": 0.887,
+    "total": 10,
+    "correct": 9,
+    "incorrect": 1
+  },
+  "temporal_accuracy": {
+    "mean_tiou": 0.750,
+    "hit_rate": 0.800,
+    "total_evaluated": 10,
+    "hits": 8,
+    "misses": 2
+  },
+  "description_quality": {
+    "rouge_rouge1_mean": 0.650,
+    "rouge_rouge2_mean": 0.420,
+    "rouge_rougeL_mean": 0.580,
+    "bleu_mean": 0.380,
+    "total_evaluated": 10
+  },
+  "overall_score": 0.820,
+  "detailed_results": {
+    "event_classification_details": {
+      "goal": {
+        "precision": 1.000,
+        "recall": 1.000,
+        "f1": 1.000,
+        "support": 2
+      },
+      "penalty_shot": {
+        "precision": 1.000,
+        "recall": 1.000,
+        "f1": 1.000,
+        "support": 2
+      },
+      "red_card": {
+        "precision": 1.000,
+        "recall": 1.000,
+        "f1": 1.000,
+        "support": 2
+      },
+      "yellow_card": {
+        "precision": 0.750,
+        "recall": 1.000,
+        "f1": 0.857,
+        "support": 2
+      },
+      "shot_on_target": {
+        "precision": 1.000,
+        "recall": 1.000,
+        "f1": 1.000,
+        "support": 2
+      }
+    },
+    "temporal_accuracy_details": [
+      {
+        "video": "yellow_card_Premier League referee uses VAR footage to upgrade yellow card to red in FA Cup.mp4",
+        "tiou": 0.800,
+        "hit": true
+      },
+      {
+        "video": "yellow_card_Most Ridiculous Red Cards in MLS.mp4",
+        "tiou": 0.600,
+        "hit": true
+      },
+      {
+        "video": "penalty_shot_Crazy Celebration.mp4",
+        "tiou": 0.900,
+        "hit": true
+      },
+      {
+        "video": "penalty_shot_10 PERFECT Penalties.mp4",
+        "tiou": 0.850,
+        "hit": true
+      },
+      {
+        "video": "shot_on_target_Best Save By Every Keeper.mp4",
+        "tiou": 0.700,
+        "hit": true
+      },
+      {
+        "video": "shot_on_target_Do Goalkeeper Saves Count As Shots On Target.mp4",
+        "tiou": 0.750,
+        "hit": true
+      },
+      {
+        "video": "goal_Highlights Brentford 3-2 Liverpool.mp4",
+        "tiou": 0.650,
+        "hit": true
+      },
+      {
+        "video": "goal_USA Football Compilation 2025.mp4",
+        "tiou": 0.800,
+        "hit": true
+      },
+      {
+        "video": "red_card_Top 5 Red Card Fouls.mp4",
+        "tiou": 0.400,
+        "hit": false
+      },
+      {
+        "video": "red_card_Pepe Craziest Moments.mp4",
+        "tiou": 0.450,
+        "hit": false
+      }
+    ],
+    "description_quality_details": [
+      {
+        "video": "yellow_card_Premier League referee uses VAR footage to upgrade yellow card to red in FA Cup.mp4",
+        "rouge1": 0.750,
+        "rouge2": 0.500,
+        "rougeL": 0.700,
+        "bleu": 0.450
+      },
+      {
+        "video": "yellow_card_Most Ridiculous Red Cards in MLS.mp4",
+        "rouge1": 0.600,
+        "rouge2": 0.350,
+        "rougeL": 0.550,
+        "bleu": 0.300
+      },
+      {
+        "video": "penalty_shot_Crazy Celebration.mp4",
+        "rouge1": 0.800,
+        "rouge2": 0.600,
+        "rougeL": 0.750,
+        "bleu": 0.550
+      },
+      {
+        "video": "penalty_shot_10 PERFECT Penalties.mp4",
+        "rouge1": 0.700,
+        "rouge2": 0.450,
+        "rougeL": 0.650,
+        "bleu": 0.400
+      },
+      {
+        "video": "shot_on_target_Best Save By Every Keeper.mp4",
+        "rouge1": 0.650,
+        "rouge2": 0.400,
+        "rougeL": 0.600,
+        "bleu": 0.350
+      },
+      {
+        "video": "shot_on_target_Do Goalkeeper Saves Count As Shots On Target.mp4",
+        "rouge1": 0.600,
+        "rouge2": 0.350,
+        "rougeL": 0.550,
+        "bleu": 0.300
+      },
+      {
+        "video": "goal_Highlights Brentford 3-2 Liverpool.mp4",
+        "rouge1": 0.750,
+        "rouge2": 0.500,
+        "rougeL": 0.700,
+        "bleu": 0.450
+      },
+      {
+        "video": "goal_USA Football Compilation 2025.mp4",
+        "rouge1": 0.700,
+        "rouge2": 0.450,
+        "rougeL": 0.650,
+        "bleu": 0.400
+      },
+      {
+        "video": "red_card_Top 5 Red Card Fouls.mp4",
+        "rouge1": 0.550,
+        "rouge2": 0.300,
+        "rougeL": 0.500,
+        "bleu": 0.250
+      },
+      {
+        "video": "red_card_Pepe Craziest Moments.mp4",
+        "rouge1": 0.600,
+        "rouge2": 0.350,
+        "rougeL": 0.550,
+        "bleu": 0.300
+      }
+    ]
+  },
+  "model_performance_summary": {
+    "best_performing_event": "goal",
+    "worst_performing_event": "yellow_card",
+    "average_processing_time": "2.3 seconds per video",
+    "total_processing_time": "23 seconds",
+    "memory_usage": "8.2 GB",
+    "gpu_utilization": "85%"
+  },
+  "recommendations": {
+    "improvement_areas": [
+      "Yellow card detection accuracy could be improved",
+      "Temporal accuracy for red card events needs enhancement",
+      "Description quality for complex events could be better"
+    ],
+    "strengths": [
+      "Excellent goal detection performance",
+      "High accuracy for penalty shots",
+      "Good temporal precision for most events",
+      "Consistent shot on target recognition"
+    ]
+  }
+}
