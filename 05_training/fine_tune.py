@@ -187,7 +187,7 @@ def run_smoke_test(config_path: str):
         logging_steps=config.get('logging_steps', 50),
         save_steps=config.get('save_steps', 500),
         eval_steps=config.get('eval_steps', 250),
-        evaluation_strategy="steps",
+        eval_strategy="steps",
         save_strategy="steps",
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
