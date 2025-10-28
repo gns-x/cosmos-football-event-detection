@@ -8,6 +8,10 @@ help:
 	@echo "🚀 Football Video Analysis Pipeline - Available Commands"
 	@echo "=================================================================="
 	@echo ""
+	@echo "🚀 QUICK START COMMANDS:"
+	@echo "  make init           - Complete setup: backend, frontend, and Cosmos model"
+	@echo "  make test-cosmos    - Test Cosmos-Reason1-7B model with CLI"
+	@echo ""
 	@echo "📊 MAIN PIPELINE COMMANDS:"
 	@echo "  make train          - Run training pipeline smoke test"
 	@echo "  make evaluate       - Run evaluation with trained model"
@@ -28,7 +32,7 @@ help:
 	@echo "  If dependencies fail: make fix-deps"
 	@echo "  If videos missing: Check 01_data_collection/raw_videos/"
 
-.PHONY: help setup install test train evaluate inference clean deploy status download-videos clean-videos annotation-app clean-delivery preprocess fix-deps generate-predictions
+.PHONY: help init test-cosmos setup install test train evaluate inference clean deploy status download-videos clean-videos annotation-app clean-delivery preprocess fix-deps generate-predictions
 
 # Default target
 default: help
@@ -60,6 +64,180 @@ default: help
 	@echo "📦 For Delivery:"
 	@echo "  make clean-delivery # Clean everything for lightweight delivery"
 	@echo ""
+
+# Complete initialization: backend, frontend, and Cosmos model
+init:
+	@echo "🚀 Complete Initialization: Backend, Frontend, and Cosmos Model"
+	@echo "=================================================================="
+	@echo "📋 This will set up EVERYTHING for Azure A100 VM:"
+	@echo "  🔧 System setup and dependencies"
+	@echo "  🧠 Download and setup Cosmos-Reason1-7B model"
+	@echo "  🌐 Backend API with local model"
+	@echo "  🎨 Frontend React application"
+	@echo "  🧪 Test the complete system"
+	@echo ""
+	@echo "⚠️  This process may take 30-60 minutes (model download ~14GB)"
+	@echo "📋 Starting complete initialization..."
+	@echo ""
+	@echo "🔧 Step 1: System Setup..."
+	@$(MAKE) setup
+	@echo ""
+	@echo "📦 Step 2: Installing Dependencies..."
+	@$(MAKE) install
+	@echo ""
+	@echo "🧠 Step 3: Setting up Local Cosmos Model..."
+	@echo "📦 Installing local model dependencies..."
+	@source cosmos-env/bin/activate && \
+		echo "Installing FastAPI and local model dependencies..." && \
+		pip install fastapi==0.104.1 uvicorn[standard]==0.24.0 && \
+		pip install transformers>=4.30.0 accelerate>=0.25.0 && \
+		pip install python-multipart aiofiles python-dotenv && \
+		pip install opencv-python pillow numpy requests pydantic && \
+		pip install bitsandbytes optimum && \
+		echo "✅ Local model dependencies installed!"
+	@echo ""
+	@echo "🌐 Step 4: Setting up Backend API..."
+	@cd backend && \
+		if [ ! -d "cosmos-local-env" ]; then \
+			echo "Creating backend virtual environment..."; \
+			python3 -m venv cosmos-local-env; \
+		fi && \
+		source cosmos-local-env/bin/activate && \
+		pip install --upgrade pip && \
+		pip install -r requirements_local.txt && \
+		echo "✅ Backend API setup completed!"
+	@echo ""
+	@echo "🎨 Step 5: Setting up Frontend..."
+	@cd frontend && \
+		if [ ! -d "node_modules" ]; then \
+			echo "Installing frontend dependencies..."; \
+			npm install; \
+		fi && \
+		echo "✅ Frontend setup completed!"
+	@echo ""
+	@echo "🧪 Step 6: Testing Cosmos Model..."
+	@$(MAKE) test-cosmos
+	@echo ""
+	@echo "🎉 COMPLETE INITIALIZATION COMPLETED!"
+	@echo ""
+	@echo "📊 Setup Summary:"
+	@echo "  ✅ System: Configured and ready"
+	@echo "  ✅ Backend: Local Cosmos API ready"
+	@echo "  ✅ Frontend: React app ready"
+	@echo "  ✅ Model: Cosmos-Reason1-7B downloaded and tested"
+	@echo ""
+	@echo "🚀 To start the complete system:"
+	@echo "  Backend: cd backend && source cosmos-local-env/bin/activate && python main_local.py"
+	@echo "  Frontend: cd frontend && npm run dev"
+	@echo "  API Docs: http://localhost:8000/docs"
+	@echo "  Frontend: http://localhost:5173"
+
+# Test Cosmos-Reason1-7B model with CLI
+test-cosmos:
+	@echo "🧪 Testing Cosmos-Reason1-7B Model with CLI"
+	@echo "=================================================================="
+	@echo "🔧 Activating environment..."
+	@source cosmos-env/bin/activate && \
+		echo "📋 Checking GPU availability..." && \
+		nvidia-smi || echo "⚠️  No GPU detected, using CPU" && \
+		echo "" && \
+		echo "🧠 Testing Cosmos-Reason1-7B model..." && \
+		python -c "
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import time
+
+print('🚀 Loading Cosmos-Reason1-7B model...')
+print('⚠️  First run will download ~14GB model (this may take 10-30 minutes)')
+
+try:
+    # Load tokenizer
+    print('📝 Loading tokenizer...')
+    tokenizer = AutoTokenizer.from_pretrained('nvidia/Cosmos-Reason1-7B', trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    
+    # Load model
+    print('🧠 Loading model...')
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f'🖥️  Using device: {device}')
+    
+    model = AutoModelForCausalLM.from_pretrained(
+        'nvidia/Cosmos-Reason1-7B',
+        trust_remote_code=True,
+        torch_dtype=torch.float16 if device == 'cuda' else torch.float32,
+        device_map='auto' if device == 'cuda' else None,
+        low_cpu_mem_usage=True
+    )
+    
+    if device == 'cpu':
+        model = model.to(device)
+    
+    print('✅ Model loaded successfully!')
+    
+    # Test with football scenario
+    print('⚽ Testing with football scenario...')
+    prompt = '''You are analyzing a football video. Please provide detailed reasoning about the following question:
+
+Question: Which player scored the goal?
+
+Please analyze the video content and provide:
+1. Step-by-step reasoning
+2. A clear answer
+3. Confidence level
+4. Key timestamp
+5. Main actor involved
+
+Format your response as structured reasoning followed by a clear answer.'''
+    
+    # Tokenize input
+    inputs = tokenizer(prompt, return_tensors='pt', truncation=True, max_length=1024)
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+    
+    # Generate response
+    print('🤖 Generating response...')
+    start_time = time.time()
+    
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=256,
+            temperature=0.7,
+            do_sample=True,
+            pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=tokenizer.eos_token_id,
+            repetition_penalty=1.1
+        )
+    
+    generation_time = time.time() - start_time
+    
+    # Decode response
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    # Remove input from response
+    if prompt in response:
+        response = response.replace(prompt, '').strip()
+    
+    print('✅ Test completed successfully!')
+    print(f'⏱️  Generation time: {generation_time:.2f} seconds')
+    print('')
+    print('📝 Model Response:')
+    print('=' * 50)
+    print(response[:500] + '...' if len(response) > 500 else response)
+    print('=' * 50)
+    print('')
+    print('🎉 Cosmos-Reason1-7B model is working correctly!')
+    
+except Exception as e:
+    print(f'❌ Error testing model: {str(e)}')
+    print('🔧 Troubleshooting:')
+    print('  - Check internet connection for model download')
+    print('  - Ensure sufficient disk space (~20GB)')
+    print('  - Check GPU memory if using CUDA')
+    exit(1)
+"
+	@echo ""
+	@echo "✅ Cosmos-Reason1-7B model test completed!"
 
 # Complete Azure VM setup
 setup:
