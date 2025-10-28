@@ -169,8 +169,8 @@ def run_smoke_test(config_path: str):
     model, tokenizer, processor = setup_lora_model(config['base_model_path'], config)
     
     # Create datasets
-    train_dataset = FootballVideoDataset(train_path, tokenizer, processor, config['max_length'])
-    val_dataset = FootballVideoDataset(val_path, tokenizer, processor, config['max_length'])
+    train_dataset = FootballVideoDataset(train_path, tokenizer, processor, int(config['max_length']))
+    val_dataset = FootballVideoDataset(val_path, tokenizer, processor, int(config['max_length']))
     
     # Setup training arguments
     output_dir = Path(config['output_dir']) / "football_sft"
@@ -178,11 +178,11 @@ def run_smoke_test(config_path: str):
     
     training_args = TrainingArguments(
         output_dir=str(output_dir),
-        num_train_epochs=config['epochs'],
-        per_device_train_batch_size=config['batch_size'],
-        per_device_eval_batch_size=config['batch_size'],
+        num_train_epochs=int(config['epochs']),
+        per_device_train_batch_size=int(config['batch_size']),
+        per_device_eval_batch_size=int(config['batch_size']),
         gradient_accumulation_steps=config.get('gradient_accumulation_steps', 4),
-        learning_rate=config['learning_rate'],
+        learning_rate=float(config['learning_rate']),
         warmup_steps=config.get('warmup_steps', 100),
         logging_steps=config.get('logging_steps', 50),
         save_steps=config.get('save_steps', 500),
