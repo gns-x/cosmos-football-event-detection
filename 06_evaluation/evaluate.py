@@ -29,23 +29,27 @@ except ImportError:
 try:
     from rouge_score import rouge_scorer
     HAS_ROUGE = True
-except ImportError:
+    print("✅ Rouge-score loaded successfully")
+except ImportError as e:
     HAS_ROUGE = False
-    print("⚠️  Rouge-score not available, skipping ROUGE metrics")
+    print(f"⚠️  Rouge-score not available: {e}")
+    print("⚠️  Skipping ROUGE metrics")
 
 try:
     from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
     import nltk
     HAS_NLTK = True
+    print("✅ NLTK loaded successfully")
     # Download required NLTK data
     try:
         nltk.download('punkt', quiet=True)
         nltk.download('stopwords', quiet=True)
     except:
         pass
-except ImportError:
+except ImportError as e:
     HAS_NLTK = False
-    print("⚠️  NLTK not available, skipping BLEU metrics")
+    print(f"⚠️  NLTK not available: {e}")
+    print("⚠️  Skipping BLEU metrics")
 
 
 class FootballVideoEvaluator:

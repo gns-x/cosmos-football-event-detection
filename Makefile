@@ -133,7 +133,15 @@ fix-deps:
 	@echo "🔧 Fixing Deprecated Package Warnings"
 	@echo "=================================================================="
 	@echo "📦 Updating deprecated packages to modern alternatives..."
-	@bash scripts/fix_deprecated_packages.sh
+	@source cosmos-env/bin/activate && \
+		echo "Installing nvidia-ml-py (replaces pynvml)..." && \
+		pip install --no-cache-dir nvidia-ml-py && \
+		echo "Installing torchcodec for modern video processing..." && \
+		pip install --no-cache-dir torchcodec && \
+		echo "Updating transformers, torchvision, torch, peft..." && \
+		pip install --no-cache-dir --upgrade transformers torchvision torch peft && \
+		echo "Installing av and opencv-python-headless for video processing..." && \
+		pip install --no-cache-dir av opencv-python-headless
 	@echo ""
 	@echo "✅ Deprecated package warnings fixed!"
 	@echo "📊 Updated packages:"
