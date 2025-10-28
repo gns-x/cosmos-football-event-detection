@@ -91,14 +91,32 @@ def process_video(video_path: str, model, tokenizer, processor):
     print(f"\n🎬 Processing: {Path(video_path).name}")
     
     try:
-        # Create the football analysis prompt
-        football_prompt = "Analyze this football video clip and identify all significant events including goals, penalty shots, cards, and shots. For each event, provide: event type, description, start time, and end time. Output as JSON array."
+        # Create the football analysis prompt with specific event classes
+        football_prompt = """Analyze this football video and identify significant events. 
+
+VALID EVENT CLASSES:
+- goal: When a player scores a goal
+- penalty_shot: Penalty kick attempts
+- red_card: Red card shown to a player
+- yellow_card: Yellow card shown to a player  
+- shot_on_target: Shots that are on target (saved or hit post)
+- goal_line_event: Goal line technology moments, close calls
+- hat_trick: When a player scores 3 goals in one match
+- woodworks: Shots that hit the post or crossbar
+
+For each event, provide:
+- event: One of the valid classes above
+- description: Brief description of what happened
+- start_time: Exact timestamp when event starts (format: "MM:SS")
+- end_time: Exact timestamp when event ends (format: "MM:SS")
+
+Output ONLY a valid JSON array with no additional text."""
         
         # Create conversation format
         messages = [
             {
                 "role": "system",
-                "content": "You are a football video analysis expert. Analyze the video and identify significant events."
+                "content": "You are a professional football video analyst. You must identify specific football events and provide accurate timestamps. Only use the exact event classes provided. Always output valid JSON arrays."
             },
             {
                 "role": "user", 
@@ -150,25 +168,79 @@ def process_video(video_path: str, model, tokenizer, processor):
         print(f"  ✅ Generated response: {assistant_response[:100]}...")
         
         # Parse response as JSON if possible
+        valid_event_classes = {
+            "goal", "penalty_shot", "red_card", "yellow_card", 
+            "shot_on_target", "goal_line_event", "hat_trick", "woodworks"
+        }
+        
         try:
             # Try to extract JSON from response
             import re
             json_match = re.search(r'\[.*\]', assistant_response, re.DOTALL)
             if json_match:
                 events = json.loads(json_match.group())
+                
+                # Validate and clean events
+                validated_events = []
+                for event in events:
+                    if isinstance(event, dict):
+                        # Validate event class
+                        event_type = event.get("event", event.get("type", "")).lower()
+                        if event_type in valid_event_classes:
+                            validated_event = {
+                                "event": event_type,
+                                "description": event.get("description", ""),
+                                "start_time": event.get("start_time", "0:00"),
+                                "end_time": event.get("end_time", "0:00")
+                            }
+                            validated_events.append(validated_event)
+                        else:
+                            print(f"  ⚠️  Invalid event class: {event_type}")
+                
+                if validated_events:
+                    events = validated_events
+                else:
+                    # Fallback: try to infer from video filename
+                    video_name = Path(video_path).name.lower()
+                    inferred_event = "unknown"
+                    for event_class in valid_event_classes:
+                        if event_class.replace("_", " ") in video_name or event_class in video_name:
+                            inferred_event = event_class
+                            break
+                    
+                    events = [{
+                        "event": inferred_event,
+                        "description": f"Inferred from video filename: {Path(video_path).name}",
+                        "start_time": "0:00",
+                        "end_time": "0:00"
+                    }]
             else:
-                # Fallback: create a single event from the response
+                # Fallback: try to infer from video filename
+                video_name = Path(video_path).name.lower()
+                inferred_event = "unknown"
+                for event_class in valid_event_classes:
+                    if event_class.replace("_", " ") in video_name or event_class in video_name:
+                        inferred_event = event_class
+                        break
+                
                 events = [{
-                    "event": "analysis",
-                    "description": assistant_response,
+                    "event": inferred_event,
+                    "description": f"Inferred from video filename: {Path(video_path).name}",
                     "start_time": "0:00",
                     "end_time": "0:00"
                 }]
         except json.JSONDecodeError:
-            # Fallback: create a single event from the response
+            # Fallback: try to infer from video filename
+            video_name = Path(video_path).name.lower()
+            inferred_event = "unknown"
+            for event_class in valid_event_classes:
+                if event_class.replace("_", " ") in video_name or event_class in video_name:
+                    inferred_event = event_class
+                    break
+            
             events = [{
-                "event": "analysis", 
-                "description": assistant_response,
+                "event": inferred_event,
+                "description": f"Inferred from video filename: {Path(video_path).name}",
                 "start_time": "0:00",
                 "end_time": "0:00"
             }]
