@@ -70,17 +70,25 @@ function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const previousVideoUrlRef = useRef<string | null>(null);
 
-  const [userPrompt, setUserPrompt] = useState("Which player scored the goal?");
-  const [systemPrompt, setSystemPrompt] = useState(`You are a helpful assistant specialized in football video analysis. Analyze the video content carefully and provide detailed reasoning followed by a clear answer.
+  const [userPrompt, setUserPrompt] = useState("Give me all the goals in this video");
+  const [systemPrompt, setSystemPrompt] = useState(`You are a specialized football video analysis AI. Your task is to analyze football videos and provide comprehensive, accurate analysis based on the user's specific request.
 
-Please analyze the video and provide:
-1. Step-by-step reasoning about what you observe
-2. A clear, direct answer to the user's question
-3. Confidence level in your analysis
-4. Key timestamp or moment of interest
-5. Main actor or subject involved
+When analyzing football videos, focus on:
+- Player identification and movements
+- Ball trajectory and positioning
+- Tactical formations and strategies
+- Key moments and timestamps
+- Statistical analysis (goals, penalties, cards, etc.)
+- Technical execution and skill assessment
 
-Format your response with structured reasoning followed by a clear answer.`);
+For requests like "Give me all the goals" or "Show me all penalties":
+- Scan the entire video systematically
+- Identify each occurrence with timestamps
+- Provide detailed analysis of each event
+- Include player numbers, techniques, and outcomes
+- Give statistical summaries when applicable
+
+Always provide structured, detailed responses that directly answer the user's question with specific football insights.`);
 
   const togglePlay = async () => {
     if (videoRef.current) {
@@ -324,12 +332,15 @@ Format your response with structured reasoning followed by a clear answer.`);
               <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-[#76B900]/10 via-transparent to-[#76B900]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="relative z-10">
                 <h2 className="text-lg font-semibold mb-3 text-[#76B900] group-hover:text-white transition-colors duration-300">User Prompt</h2>
+                <div className="mb-2">
+                  <p className="text-xs text-gray-400 mb-1">Examples: "Give me all the goals", "Show me all penalties", "Find all yellow cards"</p>
+                </div>
               <textarea
                 value={userPrompt}
                 onChange={(e) => setUserPrompt(e.target.value)}
                 className="w-full bg-[#1a1a1a] border border-gray-700 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#76B900] focus:border-transparent"
                 rows={2}
-                placeholder="Enter your question about the video..."
+                placeholder="Enter your football analysis request..."
               />
                 <div className="text-xs text-gray-400 mt-2 text-right">{userPrompt.length}/250</div>
               </div>
