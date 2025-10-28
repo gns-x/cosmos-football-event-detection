@@ -1,0 +1,33 @@
+# Cosmos-Reason1-7B with vLLM requirements
+# Install with: pip install -r requirements_vllm.txt
+
+# Core ML libraries
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# vLLM and transformers
+vllm>=0.6.0
+transformers>=4.30.0
+qwen-vl-utils>=0.0.1
+
+# FastAPI and web server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+
+# Image/Video processing
+opencv-python>=4.8.0
+pillow>=10.0.0
+numpy>=1.24.0
+
+# Utilities
+python-dotenv>=1.0.0
+aiofiles>=23.0.0
+requests>=2.31.0
+pydantic>=2.5.0
+
+# Optional: For better performance
+accelerate>=0.25.0
+bitsandbytes>=0.41.0
+optimum>=1.14.0
