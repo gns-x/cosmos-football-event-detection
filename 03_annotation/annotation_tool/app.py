@@ -35,26 +35,28 @@ def get_videos():
     raw_videos_dir = project_root / "01_data_collection" / "raw_videos"
     videos = []
     
-    print(f"Looking for videos in: {raw_videos_dir.absolute()}")
-    print(f"Directory exists: {raw_videos_dir.exists()}")
+    print(f"[DEBUG] Looking for videos in: {raw_videos_dir.absolute()}")
+    print(f"[DEBUG] Directory exists: {raw_videos_dir.exists()}")
     
     for event_class in EVENT_CLASSES:
         class_dir = raw_videos_dir / event_class
-        print(f"Checking class: {event_class} in {class_dir}")
+        print(f"[DEBUG] Checking class: {event_class} in {class_dir}")
         if class_dir.exists():
             video_files = list(class_dir.glob('*.mp4'))
-            print(f"Found {len(video_files)} videos in {event_class}")
+            print(f"[DEBUG] Found {len(video_files)} videos in {event_class}")
             for video_file in video_files:
+                relative_path = str(video_file.relative_to(raw_videos_dir))
+                print(f"[DEBUG] Video: {video_file.name} -> {relative_path}")
                 videos.append({
                     'name': video_file.stem,
-                    'path': str(video_file.relative_to(raw_videos_dir)),
+                    'path': relative_path,
                     'class': event_class,
                     'full_path': str(video_file)
                 })
         else:
-            print(f"Class directory not found: {class_dir}")
+            print(f"[DEBUG] Class directory not found: {class_dir}")
     
-    print(f"Total videos found: {len(videos)}")
+    print(f"[DEBUG] Total videos found: {len(videos)}")
     return jsonify(videos)
 
 @app.route('/api/event-classes')
@@ -146,10 +148,17 @@ def serve_video(video_path):
     raw_videos_dir = project_root / "01_data_collection" / "raw_videos"
     video_file = raw_videos_dir / video_path
     
+    print(f"[DEBUG] Serving video: {video_path}")
+    print(f"[DEBUG] Full path: {video_file}")
+    print(f"[DEBUG] Exists: {video_file.exists()}")
+    print(f"[DEBUG] Suffix: {video_file.suffix}")
+    
     if video_file.exists() and video_file.suffix == '.mp4':
-        return send_from_directory(video_file.parent, video_file.name)
+        print(f"[DEBUG] Serving from: {video_file.parent}")
+        return send_from_directory(str(video_file.parent), video_file.name)
     else:
-        return "Video not found", 404
+        print(f"[DEBUG] Video not found or invalid")
+        return f"Video not found: {video_path}", 404
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
