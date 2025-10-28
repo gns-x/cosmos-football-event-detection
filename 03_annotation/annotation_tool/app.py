@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 from datetime import datetime
+from urllib.parse import unquote
 
 app = Flask(__name__)
 
@@ -146,9 +147,13 @@ def serve_video(video_path):
     """Serve video files."""
     project_root = Path(__file__).parent.parent.parent
     raw_videos_dir = project_root / "01_data_collection" / "raw_videos"
-    video_file = raw_videos_dir / video_path
+    
+    # URL decode the video path
+    decoded_path = unquote(video_path)
+    video_file = raw_videos_dir / decoded_path
     
     print(f"[DEBUG] Serving video: {video_path}")
+    print(f"[DEBUG] Decoded path: {decoded_path}")
     print(f"[DEBUG] Full path: {video_file}")
     print(f"[DEBUG] Exists: {video_file.exists()}")
     print(f"[DEBUG] Suffix: {video_file.suffix}")
