@@ -13,6 +13,27 @@ export interface AnalysisResponse {
   confidence: number;
   timestamp: string;
   actor: string;
+  events?: EventData[];
+  summary?: any;
+}
+
+export interface EventData {
+  event_type: string;
+  start_time: string;
+  end_time: string;
+  player_jersey: string;
+  team: string;
+  jersey_color: string;
+  description?: string;
+  assist_player?: string;
+  goal_type?: string;
+  outcome?: string;
+  goalkeeper_jersey?: string;
+  goalkeeper_team?: string;
+  goalkeeper_color?: string;
+  reason?: string;
+  referee_action?: string;
+  foul_type?: string;
 }
 
 export interface ModelInfo {

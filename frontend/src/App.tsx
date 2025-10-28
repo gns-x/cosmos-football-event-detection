@@ -442,20 +442,28 @@ Always provide structured, detailed responses that directly answer the user's qu
                     {analysisResult ? (
                       <>
                         <div>
-                          <h3 className="text-sm font-semibold text-gray-300 mb-2">Cosmos Analysis Complete</h3>
-                          <ul className="space-y-1.5 text-sm text-gray-400">
-                            {analysisResult.reasoning.map((item, index) => (
-                              <li key={index} className="flex gap-2">
-                                <span className="text-[#76B900] mt-1">•</span>
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
+                          <h3 className="text-sm font-semibold text-gray-300 mb-2">Analysis Summary</h3>
+                          <p className="text-sm text-gray-300 mb-3">{analysisResult.answer}</p>
+                          
+                          {/* Show events summary if available */}
+                          {(analysisResult as any).events && (
+                            <div className="bg-[#1a1a1a] rounded-lg p-3 mb-3">
+                              <h4 className="text-xs font-semibold text-[#76B900] mb-2">Events Detected:</h4>
+                              <div className="space-y-1">
+                                {(analysisResult as any).events.map((event: any, index: number) => (
+                                  <div key={index} className="flex items-center gap-2 text-xs">
+                                    <span className="w-2 h-2 bg-[#76B900] rounded-full"></span>
+                                    <span className="text-gray-300">{event.event_type}</span>
+                                    <span className="text-gray-400">({event.start_time} - {event.end_time})</span>
+                                    <span className="text-gray-400">Player #{event.player_jersey}</span>
+                                    <span className="text-gray-400">{event.team}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="border-t border-gray-800 pt-4">
-                          <h3 className="text-sm font-semibold text-gray-300 mb-2">Response</h3>
-                          <p className="text-sm text-gray-300">{analysisResult.answer}</p>
-                        </div>
+                        
                         <div className="border-t border-gray-800 pt-4">
                           <div className="grid grid-cols-2 gap-4 text-xs">
                             <div>
@@ -463,7 +471,7 @@ Always provide structured, detailed responses that directly answer the user's qu
                               <span className="text-[#76B900] ml-2">{(analysisResult.confidence * 100).toFixed(1)}%</span>
                             </div>
                             <div>
-                              <span className="text-gray-400">Actor:</span>
+                              <span className="text-gray-400">Model:</span>
                               <span className="text-gray-300 ml-2">{analysisResult.actor}</span>
                             </div>
                           </div>
