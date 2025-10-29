@@ -121,24 +121,21 @@ async def analyze_video(
             video_path = tmp_file.name
         
         try:
-            # Extract video frames for analysis
-            frames = _extract_video_frames(video_path, max_frames=8)
+            # Extract video frames for analysis (only first frame due to NIM API limitation)
+            frames = _extract_video_frames(video_path, max_frames=1)
             
             if not frames:
                 raise HTTPException(status_code=400, detail="Could not extract frames from video")
             
-            # Convert frames to base64
-            frame_images = []
-            for frame in frames:
-                frame_b64 = _frame_to_base64(frame)
-                frame_images.append(frame_b64)
+            # Convert first frame to base64
+            frame_b64 = _frame_to_base64(frames[0])
             
-            # Prepare messages for NIM
+            # Prepare messages for NIM (only 1 image allowed)
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": [
                     {"type": "text", "text": prompt},
-                    *[{"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img}"}} for img in frame_images]
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{frame_b64}"}}
                 ]}
             ]
             
@@ -153,9 +150,10 @@ async def analyze_video(
                 "actor": "nvidia-nim-cosmos-reason1-7b",
                 "events": _extract_events_from_response(response, prompt),
                 "summary": {
-                    "frames_analyzed": len(frame_images),
+                    "frames_analyzed": 1,
                     "model": NIM_MODEL_NAME,
-                    "provider": "NVIDIA NIM"
+                    "provider": "NVIDIA NIM",
+                    "note": "Analyzing first frame only due to API limitations"
                 }
             }
             

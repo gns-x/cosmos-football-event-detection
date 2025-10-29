@@ -53,8 +53,12 @@ class CosmosAPIService {
   // Health check
   async healthCheck(): Promise<{ message: string; model_loaded: boolean }> {
     try {
-      const response = await fetch(`${this.baseURL}/`);
-      return await response.json();
+      const response = await fetch(`${this.baseURL}/health`);
+      const data = await response.json();
+      return {
+        message: data.status,
+        model_loaded: data.nim_ready
+      };
     } catch (error) {
       console.error('Health check failed:', error);
       throw new Error('Backend API is not available');
@@ -70,7 +74,13 @@ class CosmosAPIService {
   }> {
     try {
       const response = await fetch(`${this.baseURL}/health`);
-      return await response.json();
+      const data = await response.json();
+      return {
+        status: data.status,
+        model_loaded: data.nim_ready,
+        device: 'nvidia_nim',
+        model_name: data.model
+      };
     } catch (error) {
       console.error('Health status check failed:', error);
       throw new Error('Failed to get health status');
@@ -81,7 +91,13 @@ class CosmosAPIService {
   async getModelInfo(): Promise<ModelInfo> {
     try {
       const response = await fetch(`${this.baseURL}/model-info`);
-      return await response.json();
+      const data = await response.json();
+      return {
+        model_name: data.model_name,
+        device: data.provider,
+        loaded: data.status === 'ready',
+        description: `NVIDIA NIM ${data.model_name} - ${data.provider}`
+      };
     } catch (err) {
       console.error('Failed to get model info:', err);
       throw new Error('Failed to get model information');
@@ -99,7 +115,7 @@ class CosmosAPIService {
       }
       
       if (request.videoFile) {
-        formData.append('video_file', request.videoFile);
+        formData.append('file', request.videoFile);
       }
 
       const response = await fetch(`${this.baseURL}/analyze`, {
@@ -122,15 +138,13 @@ class CosmosAPIService {
   // Analyze text only (without video)
   async analyzeTextOnly(prompt: string): Promise<AnalysisResponse> {
     try {
+      const formData = new FormData();
+      formData.append('prompt', prompt);
+      formData.append('system_prompt', 'You are a professional football analyst.');
+
       const response = await fetch(`${this.baseURL}/analyze-text`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt,
-          max_tokens: 512,
-        }),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -151,6 +165,7 @@ class CosmosAPIService {
       const health = await this.getHealthStatus();
       return health.status === 'healthy' && health.model_loaded;
     } catch (error) {
+      console.error('Backend readiness check failed:', error);
       return false;
     }
   }
