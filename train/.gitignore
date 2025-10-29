@@ -107,20 +107,7 @@ Desktop.ini
 .cache/
 .tmp/
 
-# Media files globally (safety)
-*.mp4
-*.avi
-*.mov
-*.mkv
-*.wav
-*.mp3
-
-# Images that are not part of source assets
-*.png
-*.jpg
-*.jpeg
-*.tiff
-*.bmp
+# (No global media ignores; only excluding contents of 00_source_videos/ and 01_clips)
 
 # ------------------------------
 # Git
