@@ -478,13 +478,13 @@ Always provide structured, detailed responses that directly answer the user's qu
                         </div>
                       </>
                     ) : isAnalyzing ? (
-                      <div className="text-center py-8">
-                        <div className="w-8 h-8 border-2 border-[#76B900] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-gray-400">Analyzing video with Cosmos-Reason1-7B...</p>
-                      </div>
+        <div className="text-center py-8">
+          <div className="w-8 h-8 border-2 border-[#76B900] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Analyzing video with NVIDIA NIM Cosmos-Reason1-7B...</p>
+        </div>
                     ) : (
                       <div className="text-center py-8">
-                        <p className="text-gray-500">Upload a video and click "Analyze Video" to get AI-powered analysis</p>
+                        <p className="text-gray-500">Upload a video and click "Analyze Video" to get NVIDIA NIM AI-powered analysis</p>
                       </div>
                     )}
                   </div>

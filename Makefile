@@ -146,6 +146,21 @@ test-cosmos:
 	@echo ""
 	@echo "✅ Cosmos-Reason1-7B model test completed!"
 
+# Setup NVIDIA NIM backend
+setup-nim:
+	@echo "🚀 Setting up NVIDIA NIM backend..."
+	@./setup_nim.sh
+
+# Start NVIDIA NIM backend
+start-nim:
+	@echo "🚀 Starting NVIDIA NIM backend..."
+	@cd backend && python main_nim.py
+
+# Test NVIDIA NIM integration
+test-nim:
+	@echo "🧪 Testing NVIDIA NIM integration..."
+	@python test_nim.py
+
 # Complete Azure VM setup
 setup:
 	@echo "🚀 Setting up Azure A100 VM for Cosmos Football Analysis"
