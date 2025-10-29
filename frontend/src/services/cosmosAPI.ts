@@ -136,11 +136,11 @@ class CosmosAPIService {
   }
 
   // Analyze text only (without video)
-  async analyzeTextOnly(prompt: string): Promise<AnalysisResponse> {
+  async analyzeTextOnly(prompt: string, systemPrompt?: string): Promise<AnalysisResponse> {
     try {
       const formData = new FormData();
       formData.append('prompt', prompt);
-      formData.append('system_prompt', 'You are a professional football analyst.');
+      formData.append('system_prompt', systemPrompt || 'You are a professional football analyst.');
 
       const response = await fetch(`${this.baseURL}/analyze-text`, {
         method: 'POST',

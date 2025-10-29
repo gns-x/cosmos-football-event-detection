@@ -71,24 +71,7 @@ function App() {
   const previousVideoUrlRef = useRef<string | null>(null);
 
   const [userPrompt, setUserPrompt] = useState("Give me all the goals in this video");
-  const [systemPrompt, setSystemPrompt] = useState(`You are a specialized football video analysis AI. Your task is to analyze football videos and provide comprehensive, accurate analysis based on the user's specific request.
-
-When analyzing football videos, focus on:
-- Player identification and movements
-- Ball trajectory and positioning
-- Tactical formations and strategies
-- Key moments and timestamps
-- Statistical analysis (goals, penalties, cards, etc.)
-- Technical execution and skill assessment
-
-For requests like "Give me all the goals" or "Show me all penalties":
-- Scan the entire video systematically
-- Identify each occurrence with timestamps
-- Provide detailed analysis of each event
-- Include player numbers, techniques, and outcomes
-- Give statistical summaries when applicable
-
-Always provide structured, detailed responses that directly answer the user's question with specific football insights.`);
+  const [systemPrompt, setSystemPrompt] = useState(`You are a professional football analyst. Analyze the video content and provide detailed insights based on what you observe. Focus on the user's specific request and provide accurate analysis.`);
 
   const togglePlay = async () => {
     if (videoRef.current) {
