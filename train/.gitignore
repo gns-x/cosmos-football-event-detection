@@ -86,9 +86,11 @@ Desktop.ini
 # Project-specific large data/artifacts
 # Keep code, ignore heavy media and generated outputs
 # ------------------------------
-# Raw and derived media
-00_source_videos/**
-01_clips/**
+# Raw and derived media (track empty dirs via .gitkeep)
+00_source_videos/*
+!00_source_videos/.gitkeep
+01_clips/*
+!01_clips/.gitkeep
 
 # Annotations (keep if you want to version them by removing this)
 02_annotations/**
