@@ -71,6 +71,7 @@ function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResponse | null>(null);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'ready' | 'error'>('checking');
+  const [modelExists, setModelExists] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const previousVideoUrlRef = useRef<string | null>(null);
@@ -161,12 +162,22 @@ function App() {
     fileInputRef.current?.click();
   };
 
-  // Check backend status only when on Analyze page
+  // Check backend status and model existence only when on Analyze page
   useEffect(() => {
     let cancelled = false;
     const checkBackendStatus = async () => {
-      const isReady = await cosmosAPI.isReady();
-      if (!cancelled) setBackendStatus(isReady ? 'ready' : 'error');
+      try {
+        const health = await cosmosAPI.getHealthStatus();
+        if (!cancelled) {
+          setBackendStatus(health.status === 'healthy' && health.model_loaded ? 'ready' : 'error');
+          setModelExists(health.model_loaded && health.model_name !== 'none');
+        }
+      } catch {
+        if (!cancelled) {
+          setBackendStatus('error');
+          setModelExists(false);
+        }
+      }
     };
     if (currentPage === 'analyze') checkBackendStatus();
     return () => { cancelled = true; };
@@ -344,6 +355,24 @@ function App() {
             <span className="inline-block px-2 py-1 rounded bg-[#1a1a1a] border border-gray-800 text-[#76B900] font-semibold">Using Base model</span>
             <span className="ml-2">Analyze runs the base model without trained adapters.</span>
           </div>
+          
+          {/* Error Card: Cosmos Model Missing */}
+          {modelExists === false && (
+            <div className="mb-6 bg-red-900/20 border-2 border-red-600 rounded-lg shadow-lg p-4">
+              <div className="flex items-center gap-3">
+                <svg className="w-6 h-6 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <div className="text-lg font-semibold text-red-300 mb-1">Cosmos Model Not Found</div>
+                  <div className="text-sm text-red-200/80">
+                    The Cosmos model is not available. Please ensure the model directory exists and the backend has access to it.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-[1.5fr,1fr] gap-6">
             {/* Left Column - Video Player */}
             <div className="space-y-4">

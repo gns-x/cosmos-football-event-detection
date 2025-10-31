@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { cosmosAPI } from '../services/cosmosAPI';
 
 export default function TestInference() {
@@ -7,12 +7,26 @@ export default function TestInference() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; events: any[]; raw_output: string; error?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [trainedModelExists, setTrainedModelExists] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [userPrompt, setUserPrompt] = useState("Give me all the goals in this video");
   const [systemPrompt, setSystemPrompt] = useState(
     `You are a professional football analyst. Analyze the video content and provide detailed insights based on what you observe. Focus on the user's specific request and provide accurate analysis.`
   );
+
+  // Check if trained model exists
+  useEffect(() => {
+    const checkTrainedModel = async () => {
+      try {
+        const status = await cosmosAPI.getPipelineStatus();
+        setTrainedModelExists(status.has_trained);
+      } catch {
+        setTrainedModelExists(false);
+      }
+    };
+    checkTrainedModel();
+  }, []);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -53,6 +67,23 @@ export default function TestInference() {
         <p className="text-gray-300 mb-6">
           Test the fine-tuned adapters on a video clip. This uses the <b>Trained model</b> (base + LoRA).
         </p>
+
+        {/* Error Card: Trained Model Missing */}
+        {trainedModelExists === false && (
+          <div className="mb-6 bg-red-900/20 border-2 border-red-600 rounded-lg shadow-lg p-4">
+            <div className="flex items-center gap-3">
+              <svg className="w-6 h-6 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <div className="text-lg font-semibold text-red-300 mb-1">Trained Model Not Found</div>
+                <div className="text-sm text-red-200/80">
+                  The trained model (LoRA adapters) is not available. Please train the model first using the Training page before testing inference.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4">
           <div className="bg-[#1a1a1a] rounded-lg p-4 border border-gray-700">
