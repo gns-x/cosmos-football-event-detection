@@ -1,5 +1,6 @@
 // API service for connecting frontend to Cosmos backend (optional)
-const API_BASE_URL = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL || '';
+// Default to VM IP if no env var provided
+const API_BASE_URL = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export interface VideoAnalysisRequest {
   prompt: string;
@@ -104,6 +105,100 @@ class CosmosAPIService {
   async isReady(): Promise<boolean> {
     const health = await this.getHealthStatus();
     return health.status === 'healthy' && health.model_loaded;
+  }
+
+  // Pipeline endpoints
+  async getPipelineStatus(): Promise<{
+    has_clips: boolean;
+    has_annotations: boolean;
+    has_dataset: boolean;
+    has_model: boolean;
+    has_trained: boolean;
+    clips_count: number;
+    annotations_count: number;
+    dataset_count: number;
+  }> {
+    const response = await fetch(`${this.baseURL}/pipeline/status`);
+    if (!response.ok) throw new Error('Failed to get pipeline status');
+    return await response.json();
+  }
+
+  async generateAnnotations(): Promise<{
+    success: boolean;
+    message: string;
+    processed: number;
+    generated: number;
+  }> {
+    const response = await fetch(`${this.baseURL}/pipeline/generate-annotations`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to generate annotations');
+    }
+    return await response.json();
+  }
+
+  async createDataset(): Promise<{
+    success: boolean;
+    message: string;
+    records: number;
+  }> {
+    const response = await fetch(`${this.baseURL}/pipeline/create-dataset`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to create dataset');
+    }
+    return await response.json();
+  }
+
+  async startTraining(): Promise<{
+    success: boolean;
+    message: string;
+    job_id: string;
+  }> {
+    const response = await fetch(`${this.baseURL}/pipeline/train`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to start training');
+    }
+    return await response.json();
+  }
+
+  async getTrainingStatus(): Promise<{
+    running: boolean;
+    progress: number;
+    current_step: string;
+    logs: string[];
+  }> {
+    const response = await fetch(`${this.baseURL}/pipeline/train/status`);
+    if (!response.ok) throw new Error('Failed to get training status');
+    return await response.json();
+  }
+
+  async testInference(videoFile: File, opts?: { prompt?: string; systemPrompt?: string }): Promise<{
+    success: boolean;
+    events: any[];
+    raw_output: string;
+    error?: string;
+  }> {
+    const formData = new FormData();
+    formData.append('file', videoFile);
+    if (opts?.prompt) formData.append('prompt', opts.prompt);
+    if (opts?.systemPrompt) formData.append('system_prompt', opts.systemPrompt);
+    const response = await fetch(`${this.baseURL}/pipeline/test-inference`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to run inference');
+    }
+    return await response.json();
   }
 }
 
