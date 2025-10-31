@@ -1,48 +1,116 @@
-# Virtual environment
-cosmos-env/
-
-# Downloaded videos (will be created during setup)
-01_data_collection/raw_videos/*.mp4
-01_data_collection/raw_videos/*.webp
-01_data_collection/raw_videos/*.info.json
-01_data_collection/raw_videos/*/
-
-# Processed videos (will be created during preprocessing)
-02_preprocessing/processed_videos/*.mp4
-02_preprocessing/processed_videos/*/
-
-# Training checkpoints and logs
-05_training/checkpoints/
-05_training/logs/
-05_training/cosmos-cookbook/
-
-# Evaluation results
-06_evaluation/results/
-06_evaluation/predictions.json
-
-# Inference results
-07_inference/inference_results/
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-
-# OS files
+# ------------------------------
+# macOS
+# ------------------------------
 .DS_Store
-Thumbs.db
+.AppleDouble
+.LSOverride
+Icon?
+._*
 
-# IDE files
+# ------------------------------
+# Node / Frontend
+# ------------------------------
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Env files
+.env
+.env.*
+frontend/.env
+frontend/.env.*
+
+# TypeScript
+*.tsbuildinfo
+
+# Coverage / reports
+coverage/
+.nyc_output/
+
+# ------------------------------
+# Python / Backend
+# ------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+.envrc
+.python-version
+
+# Packaging
+build/
+dist/
+.eggs/
+*.egg-info/
+.installed.cfg
+pip-wheel-metadata/
+
+# Testing
+.pytest_cache/
+.tox/
+.hypothesis/
+.coverage*
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ------------------------------
+# Editors / IDE
+# ------------------------------
 .vscode/
 .idea/
-*.swp
-*.swo
+*.iml
 
-# Temporary files
+# ------------------------------
+# OS / Misc
+# ------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ------------------------------
+# Project-specific large data/artifacts
+# Keep code, ignore heavy media and generated outputs
+# ------------------------------
+# Raw and derived media (track empty dirs via .gitkeep)
+00_source_videos/*
+!00_source_videos/.gitkeep
+01_clips/*
+!01_clips/.gitkeep
+
+# Annotations (keep if you want to version them by removing this)
+02_annotations/**
+
+# Datasets and model outputs
+03_dataset/**
+04_model_output/**
+
+# Local scratch, caches, and temp
 *.tmp
 *.temp
-*.log
-.cursorignore
+*.swp
+*.swo
+.cache/
+.tmp/
+
+# (No global media ignores; only excluding contents of 00_source_videos/ and 01_clips)
+
+# ------------------------------
+# Git
+# ------------------------------
+.gitignore.local
+.git-credentials

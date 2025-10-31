@@ -1,1 +1,0 @@
-cd 05_training/cosmos-cookbook && curl -LsSf https://astral.sh/uv/install.sh | sh && source $HOME/.local/bin/env && uv sync && cd ../.. && pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 && pip install deepspeed ray[default] transformers datasets accelerate peft wandb toml pydantic
