@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { cosmosAPI, AnalysisResponse, EventData } from './services/cosmosAPI';
 import Annotate from './components/Annotate';
+import GenerateAnnotations from './components/GenerateAnnotations';
+import CreateDataset from './components/CreateDataset';
+import Training from './components/Training';
+import TestInference from './components/TestInference';
 
 // Custom SVG icons to avoid content blocker issues
 const PlayIcon = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -75,7 +79,7 @@ function App() {
   const [systemPrompt, setSystemPrompt] = useState(`You are a professional football analyst. Analyze the video content and provide detailed insights based on what you observe. Focus on the user's specific request and provide accurate analysis.`);
 
   // simple app-level routing
-  const [currentPage, setCurrentPage] = useState<'analyze' | 'annotate'>('analyze');
+  const [currentPage, setCurrentPage] = useState<'analyze' | 'annotate' | 'generate-annotations' | 'create-dataset' | 'training' | 'test-inference'>('analyze');
 
   const togglePlay = async () => {
     if (videoRef.current) {
@@ -224,48 +228,122 @@ function App() {
                 decoding="async"
               />
             </div>
-            {/* Center: Nav */}
-            <nav className="justify-self-center relative flex items-center gap-1 p-1 rounded-lg bg-[#0f0f0f] border border-gray-800">
+            {/* Center: Analyze + Pipeline + Test (Analyze/Test separated from holder) */}
+            <div className="justify-self-center flex items-center justify-center gap-2">
+              {/* Analyze */}
               <button
                 onClick={() => setCurrentPage('analyze')}
-                className={`px-4 py-2 rounded-md text-sm transition relative ${currentPage === 'analyze' ? 'text-black' : 'text-gray-300 hover:text-white'}`}
+                className={`px-4 py-2 rounded-lg text-sm transition relative whitespace-nowrap border border-gray-800 bg-[#0f0f0f] hover:bg-[#151515] ${currentPage === 'analyze' ? 'text-black' : 'text-gray-300 hover:text-white'}`}
+                title="Analyze (Base model)"
               >
                 <span className={`${currentPage === 'analyze' ? 'relative z-10' : ''}`}>Analyze</span>
                 {currentPage === 'analyze' && (
-                  <span className="absolute inset-0 -z-0 rounded-md bg-gradient-to-r from-[#76B900] to-[#87ca00] shadow-[0_0_20px_rgba(118,185,0,0.35)]" />
+                  <span className="absolute inset-0 -z-0 rounded-lg bg-gradient-to-r from-[#76B900] to-[#87ca00] shadow-[0_0_24px_rgba(118,185,0,0.45)]" />
                 )}
               </button>
+
+              {/* Pipeline holder */}
+              <nav className="relative flex items-center gap-1 p-1 rounded-xl bg-[#0f0f0f] border border-gray-800 overflow-x-auto shadow-[inset_0_0_30px_rgba(118,185,0,0.05)]">
+                <div className="flex items-center gap-1 px-1">
+                <button
+                  onClick={() => setCurrentPage('generate-annotations')}
+                  className={`px-4 py-2 rounded-md text-sm transition relative whitespace-nowrap ${currentPage === 'generate-annotations' ? 'text-black' : 'text-gray-300 hover:text-white'}`}
+                >
+                  <span className={`${currentPage === 'generate-annotations' ? 'relative z-10' : ''}`}>Generate</span>
+                  {currentPage === 'generate-annotations' && (
+                    <span className="absolute inset-0 -z-0 rounded-md bg-[#1a2a12] ring-1 ring-[#76B900]/40 shadow-[0_0_16px_rgba(118,185,0,0.35)]" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setCurrentPage('annotate')}
+                  className={`px-4 py-2 rounded-md text-sm transition relative whitespace-nowrap ${currentPage === 'annotate' ? 'text-black' : 'text-gray-300 hover:text-white'}`}
+                >
+                  <span className={`${currentPage === 'annotate' ? 'relative z-10' : ''}`}>Annotate</span>
+                  {currentPage === 'annotate' && (
+                    <span className="absolute inset-0 -z-0 rounded-md bg-[#1a2a12] ring-1 ring-[#76B900]/40 shadow-[0_0_16px_rgba(118,185,0,0.35)]" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setCurrentPage('create-dataset')}
+                  className={`px-4 py-2 rounded-md text-sm transition relative whitespace-nowrap ${currentPage === 'create-dataset' ? 'text-black' : 'text-gray-300 hover:text-white'}`}
+                >
+                  <span className={`${currentPage === 'create-dataset' ? 'relative z-10' : ''}`}>Dataset</span>
+                  {currentPage === 'create-dataset' && (
+                    <span className="absolute inset-0 -z-0 rounded-md bg-[#1a2a12] ring-1 ring-[#76B900]/40 shadow-[0_0_16px_rgba(118,185,0,0.35)]" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setCurrentPage('training')}
+                  className={`px-4 py-2 rounded-md text-sm transition relative whitespace-nowrap ${currentPage === 'training' ? 'text-black' : 'text-gray-300 hover:text-white'}`}
+                >
+                  <span className={`${currentPage === 'training' ? 'relative z-10' : ''}`}>Train</span>
+                  {currentPage === 'training' && (
+                    <span className="absolute inset-0 -z-0 rounded-md bg-[#1a2a12] ring-1 ring-[#76B900]/40 shadow-[0_0_16px_rgba(118,185,0,0.35)]" />
+                  )}
+                </button>
+                </div>
+              </nav>
+
+              {/* Test */}
               <button
-                onClick={() => setCurrentPage('annotate')}
-                className={`px-4 py-2 rounded-md text-sm transition relative ${currentPage === 'annotate' ? 'text-black' : 'text-gray-300 hover:text-white'}`}
+                onClick={() => setCurrentPage('test-inference')}
+                className={`px-4 py-2 rounded-lg text-sm transition relative whitespace-nowrap border border-gray-800 bg-[#0f0f0f] hover:bg-[#151515] ${currentPage === 'test-inference' ? 'text-black' : 'text-gray-300 hover:text-white'}`}
+                title="Run inference with trained model"
               >
-                <span className={`${currentPage === 'annotate' ? 'relative z-10' : ''}`}>Annotate</span>
-                {currentPage === 'annotate' && (
-                  <span className="absolute inset-0 -z-0 rounded-md bg-gradient-to-r from-[#76B900] to-[#87ca00] shadow-[0_0_20px_rgba(118,185,0,0.35)]" />
+                <span className={`${currentPage === 'test-inference' ? 'relative z-10' : ''}`}>Test</span>
+                {currentPage === 'test-inference' && (
+                  <span className="absolute inset-0 -z-0 rounded-lg bg-gradient-to-r from-[#76B900] to-[#87ca00] shadow-[0_0_24px_rgba(118,185,0,0.45)]" />
                 )}
               </button>
-            </nav>
-            {/* Right: status */}
-            <div className="flex items-center gap-3 justify-self-end">
-              <div className={`w-2.5 h-2.5 rounded-full ${
-                backendStatus === 'ready' ? 'bg-green-500' : 
-                backendStatus === 'checking' ? 'bg-yellow-500' : 'bg-red-500'
-              }`} />
-              <span className="text-sm text-gray-400">
-                Cosmos API: {
-                  backendStatus === 'ready' ? 'Ready' :
-                  backendStatus === 'checking' ? 'Checking...' : 'Offline'
-                }
-              </span>
             </div>
+            {/* Right: Cosmos API Status */}
+            <div className="flex items-center gap-2.5 justify-self-end">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#1a1a1a] border border-gray-800">
+                <div className="relative">
+                  <div className={`w-2 h-2 rounded-full ${
+                    backendStatus === 'ready' ? 'bg-green-500' : 
+                    backendStatus === 'checking' ? 'bg-yellow-500 animate-pulse' : 
+                    'bg-red-500'
+                  }`} />
+                  {backendStatus === 'ready' && (
+                    <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-500 animate-ping opacity-75" />
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-[#76B900]">Cosmos API</span>
+                  <span className={`text-xs font-medium ${
+                    backendStatus === 'ready' ? 'text-green-400' : 
+                    backendStatus === 'checking' ? 'text-yellow-400' : 
+                    'text-red-400'
+                  }`}>
+                    {backendStatus === 'ready' ? 'Ready' :
+                     backendStatus === 'checking' ? 'Checking...' : 
+                     'Offline'}
+                  </span>
+                </div>
+              </div>
           </div>
         </div>
+      </div>
       </header>
 
       {currentPage === 'annotate' ? (
         <Annotate />
+      ) : currentPage === 'generate-annotations' ? (
+        <GenerateAnnotations />
+      ) : currentPage === 'create-dataset' ? (
+        <CreateDataset />
+      ) : currentPage === 'training' ? (
+        <Training />
+      ) : currentPage === 'test-inference' ? (
+        <TestInference />
       ) : (
         <div className="max-w-[1600px] mx-auto p-6">
+          {/* Analyze page note: Base model */}
+          <div className="mb-4 text-xs text-gray-400">
+            <span className="inline-block px-2 py-1 rounded bg-[#1a1a1a] border border-gray-800 text-[#76B900] font-semibold">Using Base model</span>
+            <span className="ml-2">Analyze runs the base model without trained adapters.</span>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-[1.5fr,1fr] gap-6">
             {/* Left Column - Video Player */}
             <div className="space-y-4">
@@ -492,7 +570,7 @@ function App() {
                               </div>
                               <div>
                                 <span className="text-gray-400">Model:</span>
-                                <span className="text-gray-300 ml-2">{analysisResult.actor}</span>
+                                <span className="text-gray-300 ml-2">{analysisResult.actor} (Base model)</span>
                               </div>
                             </div>
                           </div>
