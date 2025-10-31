@@ -1,29 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { cosmosAPI } from '../services/cosmosAPI';
 
 // Types
 type EventItem = { description: string; start_time: string; end_time: string; event: string };
 type ClipInfo = { name: string; hasAnnotation: boolean };
-
-type DirEntry = [string, FileSystemFileHandle | FileSystemDirectoryHandle];
-
-type ShowDirectoryPicker = () => Promise<FileSystemDirectoryHandle>;
-
-// File System Access helpers
-async function getSubdirHandle(root: FileSystemDirectoryHandle, name: string, create = false) {
-	for await (const [key, handle] of (root as unknown as AsyncIterable<DirEntry>)) {
-		if ((handle as FileSystemDirectoryHandle).kind === 'directory' && key === name) return handle as FileSystemDirectoryHandle;
-	}
-	return create ? await root.getDirectoryHandle(name, { create: true }) : undefined;
-}
-
-async function existsFile(dir: FileSystemDirectoryHandle, fileName: string) {
-	try {
-		await dir.getFileHandle(fileName);
-		return true;
-	} catch {
-		return false;
-	}
-}
 
 function secondsToMMSS(sec: number) {
 	const s = Math.max(0, Math.floor(sec));
@@ -32,19 +12,7 @@ function secondsToMMSS(sec: number) {
 	return `${mm}:${ss}`;
 }
 
-async function ensureReadWritePermission(handle: FileSystemDirectoryHandle | FileSystemFileHandle) {
-    const anyHandle = handle as unknown as { queryPermission?: (opts: { mode: 'read' | 'readwrite' }) => Promise<PermissionState> | PermissionState; requestPermission?: (opts: { mode: 'read' | 'readwrite' }) => Promise<PermissionState> | PermissionState };
-    if (!anyHandle.queryPermission || !anyHandle.requestPermission) return;
-    const current = await anyHandle.queryPermission!({ mode: 'readwrite' });
-    if (current === 'granted') return;
-    const res = await anyHandle.requestPermission!({ mode: 'readwrite' });
-    if (res !== 'granted') throw new Error('Write permission was not granted');
-}
-
 export default function Annotate() {
-	const [trainHandle, setTrainHandle] = useState<FileSystemDirectoryHandle | null>(null);
-	const [clipsHandle, setClipsHandle] = useState<FileSystemDirectoryHandle | null>(null);
-	const [annHandle, setAnnHandle] = useState<FileSystemDirectoryHandle | null>(null);
 	const [classes, setClasses] = useState<string[]>([]);
 	const [currentClass, setCurrentClass] = useState<string>("");
 	const [clips, setClips] = useState<ClipInfo[]>([]);
@@ -57,6 +25,8 @@ export default function Annotate() {
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const prevUrl = useRef<string>("");
 	const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+	const [connectionStatus, setConnectionStatus] = useState<{ status: 'connecting' | 'success' | 'error'; message: string } | null>(null);
+	const [loading, setLoading] = useState(false);
 
 	function showToast(type: 'success' | 'error', message: string) {
 		setToast({ type, message });
@@ -82,72 +52,58 @@ export default function Annotate() {
 
 	const filteredClips = useMemo(() => filterMissing ? clips.filter(c => !c.hasAnnotation) : clips, [clips, filterMissing]);
 
-	async function connectFolder() {
-		try {
-			if (!('showDirectoryPicker' in window)) throw new Error('This browser does not support directory access. Use Chrome or Edge.');
-			const picker = (window as unknown as { showDirectoryPicker: ShowDirectoryPicker }).showDirectoryPicker;
-			const root = await picker();
-			const one = await getSubdirHandle(root, '01_clips');
-			const two = await getSubdirHandle(root, '02_annotations', true);
-			if (!one || !two) throw new Error('Invalid folder: must contain 01_clips and 02_annotations');
-			setTrainHandle(root);
-			setClipsHandle(one);
-			setAnnHandle(two);
-			// Load classes
-			const cls: string[] = [];
-			for await (const [key, handle] of (one as unknown as AsyncIterable<DirEntry>)) {
-				if ((handle as FileSystemDirectoryHandle).kind === 'directory') cls.push(key);
-			}
-			cls.sort();
-			setClasses(cls);
-			if (cls.length) setCurrentClass(cls[0]);
-		} catch (e) {
-			console.error(e);
-		}
-	}
-
+	// Load classes on mount
 	useEffect(() => {
-		if (!clipsHandle || !annHandle || !currentClass) return;
 		(async () => {
 			try {
-				const classClips = await clipsHandle.getDirectoryHandle(currentClass);
-				const classAnno = await annHandle.getDirectoryHandle(currentClass, { create: true });
-				const items: ClipInfo[] = [];
-				for await (const [key, handle] of (classClips as unknown as AsyncIterable<DirEntry>)) {
-					if ((handle as FileSystemFileHandle).kind === 'file' && key.toLowerCase().endsWith('.mp4')) {
-						const name = key.replace(/\.mp4$/i, '');
-						items.push({ name, hasAnnotation: await existsFile(classAnno, `${name}.json`) });
-					}
+				setConnectionStatus({ status: 'connecting', message: 'Connecting to backend...' });
+				const cls = await cosmosAPI.getClasses();
+				if (cls.length > 0) {
+					setClasses(cls);
+					setCurrentClass(cls[0]);
+					setConnectionStatus({ status: 'success', message: 'Successfully connected to backend' });
+				} else {
+					setConnectionStatus({ status: 'error', message: 'No classes found. Make sure 01_clips directory exists.' });
 				}
-				items.sort();
+			} catch (e) {
+				console.error(e);
+				const errorMessage = e instanceof Error ? e.message : 'Failed to connect to backend';
+				setConnectionStatus({ status: 'error', message: errorMessage });
+			}
+		})();
+	}, []);
+
+	// Load clips when class changes
+	useEffect(() => {
+		if (!currentClass) return;
+		(async () => {
+			try {
+				setLoading(true);
+				const items = await cosmosAPI.getClips(currentClass);
 				setClips(items);
 				setSelected("");
 				setEvents([]);
 				if (prevUrl.current) { URL.revokeObjectURL(prevUrl.current); prevUrl.current = ""; setVideoUrl(""); }
 			} catch (e) {
 				console.error(e);
+				showToast('error', 'Failed to load clips');
+			} finally {
+				setLoading(false);
 			}
 		})();
-	}, [clipsHandle, annHandle, currentClass, reloadKey]);
+	}, [currentClass, reloadKey]);
 
 	async function loadClip(name: string) {
-		if (!clipsHandle || !annHandle || !currentClass) return;
 		setSelected(name);
-		// video
-		const classClips = await clipsHandle.getDirectoryHandle(currentClass);
-		const fileHandle = await classClips.getFileHandle(`${name}.mp4`);
-		const file = await fileHandle.getFile();
-		const url = URL.createObjectURL(file);
+		// Set video URL from backend
+		const url = cosmosAPI.getVideoUrl(currentClass, name);
 		if (prevUrl.current) URL.revokeObjectURL(prevUrl.current);
-		prevUrl.current = url;
+		prevUrl.current = url; // Not an object URL, so no need to revoke
 		setVideoUrl(url);
-		// json
+		
+		// Load annotation
 		try {
-			const classAnno = await annHandle.getDirectoryHandle(currentClass, { create: true });
-			const annoHandle = await classAnno.getFileHandle(`${name}.json`);
-			const annoFile = await annoHandle.getFile();
-			const text = await annoFile.text();
-			const data = JSON.parse(text);
+			const data = await cosmosAPI.getAnnotation(currentClass, name);
 			setEvents(Array.isArray(data) ? data as EventItem[] : []);
 		} catch {
 			setEvents([]);
@@ -158,11 +114,11 @@ export default function Annotate() {
 		if (!videoRef.current) return;
 		videoRef.current.pause();
 		setPlaying(false);
-    const nowSec = Math.max(0, videoRef.current.currentTime || 0);
-    const startSec = Math.max(0, nowSec - 3);
-    const start = secondsToMMSS(startSec);
-    const end = secondsToMMSS(nowSec);
-    setEvents(prev => [...prev, { description: '', event: eventName, start_time: start, end_time: end }]);
+		const nowSec = Math.max(0, videoRef.current.currentTime || 0);
+		const startSec = Math.max(0, nowSec - 3);
+		const start = secondsToMMSS(startSec);
+		const end = secondsToMMSS(nowSec);
+		setEvents(prev => [...prev, { description: '', event: eventName, start_time: start, end_time: end }]);
 	}
 
 	function updateEvent(index: number, patch: Partial<EventItem>) {
@@ -175,45 +131,66 @@ export default function Annotate() {
 
 	async function save() {
 		try {
-            if (!annHandle || !currentClass || !selected) {
-				showToast('error', 'Connect train folder and select a clip.');
-                return;
-            }
-            const valid = events.every(e => e.description && e.event && e.start_time && e.end_time);
-            if (!valid) {
+			if (!currentClass || !selected) {
+				showToast('error', 'Select a clip to save annotation.');
+				return;
+			}
+			const valid = events.every(e => e.description && e.event && e.start_time && e.end_time);
+			if (!valid) {
 				showToast('error', 'Complete all event fields before saving.');
-                return;
-            }
-            await ensureReadWritePermission(annHandle);
-            const classAnno = await annHandle.getDirectoryHandle(currentClass, { create: true });
-            await ensureReadWritePermission(classAnno as unknown as FileSystemDirectoryHandle);
-            const fileHandle = await classAnno.getFileHandle(`${selected}.json`, { create: true });
-            const writable = await (fileHandle as unknown as { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
-            await writable.write(new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' }));
-            await writable.close();
-            setClips(prev => prev.map(c => c.name === selected ? { ...c, hasAnnotation: true } : c));
+				return;
+			}
+			await cosmosAPI.saveAnnotation(currentClass, selected, events);
+			setClips(prev => prev.map(c => c.name === selected ? { ...c, hasAnnotation: true } : c));
 			showToast('success', 'Annotation saved.');
-        } catch (err) {
-            console.error(err);
-			showToast('error', 'Failed to save. Check folder access and permissions (Chrome/Edge).');
-        }
+		} catch (err) {
+			console.error(err);
+			showToast('error', 'Failed to save annotation.');
+		}
 	}
 
 	return (
 		<div className="max-w-[1600px] mx-auto p-6">
-			{/* Connect Folder */}
-			<div className="bg-[#121212] border-2 border-transparent rounded-lg shadow-lg p-4 mb-6 relative group hover:border-[#76B900] transition-all duration-300">
-				<div className="relative z-10 flex items-center gap-3">
-					<button onClick={connectFolder} className="px-4 py-2 bg-[#76B900] text-black rounded-md hover:bg-[#87ca00] transition">{trainHandle ? 'Reconnect Folder' : 'Connect Train Folder'}</button>
-					<div className="text-sm text-gray-400">Grant access to the root that contains 01_clips and 02_annotations</div>
+			{/* Connection Status */}
+			{connectionStatus && (
+				<div className={`bg-[#121212] border-2 rounded-lg shadow-lg p-4 mb-6 transition-all duration-300 ${
+					connectionStatus.status === 'success' 
+						? 'border-[#76B900] bg-[#11260a]' 
+						: connectionStatus.status === 'error'
+						? 'border-red-600 bg-[#2a0a0a]'
+						: 'border-gray-600'
+				}`}>
+					<div className="flex items-center gap-3">
+						{connectionStatus.status === 'success' && (
+							<svg className="w-5 h-5 text-[#76B900]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+							</svg>
+						)}
+						{connectionStatus.status === 'error' && (
+							<svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+							</svg>
+						)}
+						{connectionStatus.status === 'connecting' && (
+							<svg className="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+								<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+								<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+							</svg>
+						)}
+						<div className={`text-sm ${
+							connectionStatus.status === 'success' ? 'text-[#76B900]' : connectionStatus.status === 'error' ? 'text-red-400' : 'text-gray-400'
+						}`}>
+							{connectionStatus.message}
+						</div>
+					</div>
 				</div>
-			</div>
+			)}
 
 			<div className="grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-6">
 				{/* Sidebar */}
 				<aside className="bg-[#121212] rounded-lg p-4 border-2 border-transparent hover:border-[#76B900] transition-all">
 					<h3 className="text-[#76B900] font-semibold mb-3">Classes</h3>
-					<select disabled={!classes.length} value={currentClass} onChange={e => setCurrentClass(e.target.value)} className="w-full bg-[#1a1a1a] border border-gray-700 rounded px-3 py-2 text-sm mb-3">
+					<select disabled={!classes.length || loading} value={currentClass} onChange={e => setCurrentClass(e.target.value)} className="w-full bg-[#1a1a1a] border border-gray-700 rounded px-3 py-2 text-sm mb-3">
 						{classes.map(c => <option key={c} value={c}>{c}</option>)}
 					</select>
 					<label className="flex items-center gap-2 text-sm text-gray-300 mb-3">

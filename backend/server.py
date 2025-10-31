@@ -769,6 +769,79 @@ async def test_inference(
         )
 
 
+# ========== ANNOTATION API ENDPOINTS ==========
+
+@app.get("/api/annotate/classes")
+async def get_classes():
+    """Get list of classes (directories) in 01_clips"""
+    if not os.path.isdir(CLIPS_DIR):
+        return []
+    classes = []
+    for item in os.listdir(CLIPS_DIR):
+        class_path = os.path.join(CLIPS_DIR, item)
+        if os.path.isdir(class_path):
+            classes.append(item)
+    return sorted(classes)
+
+
+@app.get("/api/annotate/clips/{class_name}")
+async def get_clips(class_name: str):
+    """Get list of clips in a class"""
+    class_clips_dir = os.path.join(CLIPS_DIR, class_name)
+    if not os.path.isdir(class_clips_dir):
+        raise HTTPException(status_code=404, detail=f"Class not found: {class_name}")
+    
+    clips = []
+    for filename in os.listdir(class_clips_dir):
+        if filename.lower().endswith('.mp4'):
+            name = os.path.splitext(filename)[0]
+            anno_path = os.path.join(ANNO_DIR, class_name, f"{name}.json")
+            has_annotation = os.path.isfile(anno_path)
+            clips.append({"name": name, "hasAnnotation": has_annotation})
+    return sorted(clips, key=lambda x: x["name"])
+
+
+@app.get("/api/annotate/video/{class_name}/{clip_name}")
+async def get_video(class_name: str, clip_name: str):
+    """Get video file for a clip"""
+    video_path = os.path.join(CLIPS_DIR, class_name, f"{clip_name}.mp4")
+    if not os.path.isfile(video_path):
+        raise HTTPException(status_code=404, detail=f"Video not found: {class_name}/{clip_name}")
+    
+    from fastapi.responses import FileResponse
+    return FileResponse(video_path, media_type="video/mp4")
+
+
+@app.get("/api/annotate/annotation/{class_name}/{clip_name}")
+async def get_annotation(class_name: str, clip_name: str):
+    """Get annotation JSON for a clip"""
+    anno_path = os.path.join(ANNO_DIR, class_name, f"{clip_name}.json")
+    if not os.path.isfile(anno_path):
+        return []
+    
+    try:
+        with open(anno_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read annotation: {str(e)}")
+
+
+@app.post("/api/annotate/annotation/{class_name}/{clip_name}")
+async def save_annotation(class_name: str, clip_name: str, events: List[Dict[str, Any]]):
+    """Save annotation JSON for a clip"""
+    anno_class_dir = os.path.join(ANNO_DIR, class_name)
+    os.makedirs(anno_class_dir, exist_ok=True)
+    
+    anno_path = os.path.join(anno_class_dir, f"{clip_name}.json")
+    try:
+        with open(anno_path, 'w', encoding='utf-8') as f:
+            json.dump(events, f, indent=2, ensure_ascii=False)
+        return {"success": True, "message": "Annotation saved"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save annotation: {str(e)}")
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8000")))
 

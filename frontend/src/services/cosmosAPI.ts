@@ -37,6 +37,13 @@ export interface EventData {
   foul_type?: string;
 }
 
+export interface AnnotationEvent {
+  description: string;
+  start_time: string;
+  end_time: string;
+  event: string;
+}
+
 class CosmosAPIService {
   private baseURL: string;
 
@@ -182,7 +189,7 @@ class CosmosAPIService {
 
   async testInference(videoFile: File, opts?: { prompt?: string; systemPrompt?: string }): Promise<{
     success: boolean;
-    events: any[];
+    events: EventData[];
     raw_output: string;
     error?: string;
   }> {
@@ -197,6 +204,44 @@ class CosmosAPIService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to run inference');
+    }
+    return await response.json();
+  }
+
+  // Annotation API endpoints
+  async getClasses(): Promise<string[]> {
+    const response = await fetch(`${this.baseURL}/api/annotate/classes`);
+    if (!response.ok) throw new Error('Failed to get classes');
+    return await response.json();
+  }
+
+  async getClips(className: string): Promise<Array<{ name: string; hasAnnotation: boolean }>> {
+    const response = await fetch(`${this.baseURL}/api/annotate/clips/${encodeURIComponent(className)}`);
+    if (!response.ok) throw new Error('Failed to get clips');
+    return await response.json();
+  }
+
+  getVideoUrl(className: string, clipName: string): string {
+    return `${this.baseURL}/api/annotate/video/${encodeURIComponent(className)}/${encodeURIComponent(clipName)}`;
+  }
+
+  async getAnnotation(className: string, clipName: string): Promise<AnnotationEvent[]> {
+    const response = await fetch(`${this.baseURL}/api/annotate/annotation/${encodeURIComponent(className)}/${encodeURIComponent(clipName)}`);
+    if (!response.ok) throw new Error('Failed to get annotation');
+    return await response.json();
+  }
+
+  async saveAnnotation(className: string, clipName: string, events: AnnotationEvent[]): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${this.baseURL}/api/annotate/annotation/${encodeURIComponent(className)}/${encodeURIComponent(clipName)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(events),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to save annotation');
     }
     return await response.json();
   }
